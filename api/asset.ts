@@ -15,36 +15,36 @@ export const getAssets = async (
   if (type) params.append('type', type);
   if (search) params.append('search', search);
   
-  return get<UserAsset[]>(`/assets?${params.toString()}`);
+  return get<UserAsset[]>(`/admin/assets?${params.toString()}`);
 };
 
 // 获取资产详情
 export const getAssetById = async (id: string): Promise<UserAsset> => {
-  return get<UserAsset>(`/assets/${id}`);
+  return get<UserAsset>(`/admin/assets/${id}`);
 };
 
 // 更新资产
 export const updateAsset = async (id: string, asset: Partial<UserAsset>): Promise<UserAsset> => {
-  return put<UserAsset>(`/assets/${id}`, asset);
+  return put<UserAsset>(`/admin/assets/${id}`, asset);
 };
 
 // 删除资产
 export const deleteAsset = async (id: string): Promise<void> => {
-  await del(`/assets/${id}`);
+  await del(`/admin/assets/${id}`);
 };
 
 // 置顶/取消置顶
 export const togglePin = async (id: string): Promise<UserAsset> => {
-  return put<UserAsset>(`/assets/${id}/pin`);
+  return put<UserAsset>(`/admin/assets/${id}/pin`);
 };
 
 // 更新状态（上架/下架）
 export const updateAssetStatus = async (id: string, status: string): Promise<UserAsset> => {
-  return put<UserAsset>(`/assets/${id}/status?status=${status}`);
+  return put<UserAsset>(`/admin/assets/${id}/status?status=${status}`);
 };
 
 // 更新点赞数
 export const updateLikeCount = async (id: string, likeCount: number): Promise<UserAsset> => {
-  return put<UserAsset>(`/assets/${id}/like-count?likeCount=${likeCount}`);
+  return put<UserAsset>(`/admin/assets/${id}/like-count?likeCount=${likeCount}`);
 };
 

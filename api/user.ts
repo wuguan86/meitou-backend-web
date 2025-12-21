@@ -10,31 +10,31 @@ export const getUsers = async (category?: string, search?: string): Promise<User
   if (category) params.append('category', category);
   if (search) params.append('search', search);
   
-  return get<User[]>(`/users?${params.toString()}`);
+  return get<User[]>(`/admin/users?${params.toString()}`);
 };
 
 // 获取用户详情
 export const getUserById = async (id: string): Promise<User> => {
-  return get<User>(`/users/${id}`);
+  return get<User>(`/admin/users/${id}`);
 };
 
 // 创建用户
 export const createUser = async (user: Partial<User>): Promise<User> => {
-  return post<User>('/users', user);
+  return post<User>('/admin/users', user);
 };
 
 // 更新用户
 export const updateUser = async (id: string, user: Partial<User>): Promise<User> => {
-  return put<User>(`/users/${id}`, user);
+  return put<User>(`/admin/users/${id}`, user);
 };
 
 // 删除用户
 export const deleteUser = async (id: string): Promise<void> => {
-  await del(`/users/${id}`);
+  await del(`/admin/users/${id}`);
 };
 
 // 赠送积分
 export const giftPoints = async (id: string, points: number): Promise<User> => {
-  return post<User>(`/users/${id}/gift-points?points=${points}`);
+  return post<User>(`/admin/users/${id}/gift-points?points=${points}`);
 };
 

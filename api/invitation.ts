@@ -9,7 +9,7 @@ export const getInvitations = async (siteCategory?: string): Promise<InvitationC
   const params = new URLSearchParams();
   if (siteCategory) params.append('siteCategory', siteCategory);
   
-  return get<InvitationCode[]>(`/invitations?${params.toString()}`);
+  return get<InvitationCode[]>(`/admin/invitations?${params.toString()}`);
 };
 
 // 生成邀请码
@@ -22,11 +22,11 @@ export const generateInvitations = async (params: {
   validStartDate?: string;
   validEndDate?: string;
 }): Promise<InvitationCode[]> => {
-  return post<InvitationCode[]>('/invitations/generate', params);
+  return post<InvitationCode[]>('/admin/invitations/generate', params);
 };
 
 // 更新邀请码
 export const updateInvitation = async (id: string, code: Partial<InvitationCode>): Promise<InvitationCode> => {
-  return put<InvitationCode>(`/invitations/${id}`, code);
+  return put<InvitationCode>(`/admin/invitations/${id}`, code);
 };
 

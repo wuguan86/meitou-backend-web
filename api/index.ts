@@ -77,5 +77,50 @@ export const del = <T>(url: string): Promise<T> => {
   return request<T>(url, { method: 'DELETE' });
 };
 
-export default { get, post, put, delete: del };
+// 文件上传请求（使用 FormData）
+export const uploadFile = async <T>(
+  url: string,
+  file: File,
+  folder?: string
+): Promise<T> => {
+  // 创建 FormData
+  const formData = new FormData();
+  formData.append('file', file);
+  if (folder) {
+    formData.append('folder', folder);
+  }
+
+  // 获取 Token（不包含 Content-Type，让浏览器自动设置）
+  const headers: HeadersInit = {};
+  const token = localStorage.getItem('admin_token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  // 发送请求
+  const response = await fetch(`${API_BASE_URL}${url}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || '上传失败');
+  }
+
+  // 如果响应格式是 Result<T>
+  if (data.code !== undefined) {
+    if (data.code === 200) {
+      return data.data;
+    } else {
+      throw new Error(data.message || '上传失败');
+    }
+  }
+
+  return data;
+};
+
+export default { get, post, put, delete: del, uploadFile };
 

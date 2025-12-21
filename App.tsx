@@ -1,47 +1,25 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer, AreaChart, Area, Cell
-} from 'recharts';
-import { 
-  LogOut, 
   Search, 
   Plus, 
   Edit, 
   Trash2, 
   Eye, 
-  Settings,
   Menu as MenuIcon,
-  ChevronDown,
   X,
-  User,
   Image as ImageIcon,
   Pin,
   EyeOff,
   Undo,
   Redo,
   Megaphone,
-  Calendar,
   Layers,
   CreditCard,
-  Coins,
   Layout,
-  Building,
   Key,
   FileClock,
   Ticket,
-  ExternalLink,
-  Settings2,
-  Mic2,
-  Video,
-  ListFilter,
-  Users as UsersIcon,
-  ArrowRight,
-  Filter,
-  Link as LinkIcon,
-  BookOpen,
-  LayoutGrid,
-  Lock,
   Upload,
   Bold,
   Italic,
@@ -50,295 +28,54 @@ import {
   AlignCenter,
   AlignRight,
   Code,
-  List,
-  Table as TableIcon,
-  Type as TypeIcon,
+  Link as LinkIcon,
+  BookOpen,
   ShieldAlert,
-  Save,
-  CheckCircle,
-  Copy,
-  Gift,
-  MoreVertical,
   Play,
   Music,
   Heart,
   Pencil,
-  ChevronRight,
-  Globe,
   Server,
   Zap,
   Download,
   Headphones,
-  MessageSquare
+  Copy
 } from 'lucide-react';
 import { SIDEBAR_MENU, MOCK_ADS, MOCK_API_CATEGORIES, STANDARD_MENUS, MOCK_MANUALS, MOCK_ASSETS } from './constants';
 import { User as UserType, UserAsset, MarketingAd, NavSection, GenerationRecord, InvitationCode, MenuConfig, ManualConfig, BackendAccount, ApiPlatform, ApiInterface } from './types';
 // API 服务
 import * as authAPI from './api/auth';
-import * as userAPI from './api/user';
 import * as assetAPI from './api/asset';
 import * as generationAPI from './api/generation';
 import * as invitationAPI from './api/invitation';
 import * as accountAPI from './api/account';
+import * as uploadAPI from './api/upload';
+import * as marketingAPI from './api/marketing';
 
-// --- Reusable Components ---
-const Modal = ({ isOpen, onClose, title, children, size = 'md' }: { isOpen: boolean; onClose: () => void; title: string; children?: React.ReactNode; size?: 'md' | 'lg' | 'xl' | 'full' }) => {
-  if (!isOpen) return null;
-  const sizeClasses = { md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-4xl', full: 'max-w-[95vw] h-[90vh]' };
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-[2px] p-4 animate-fade-in" onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-    }}>
-      <div className={`bg-white rounded-xl shadow-2xl w-full ${sizeClasses[size]} flex flex-col max-h-[90vh] overflow-hidden relative transform transition-all`}>
-        <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
-          <h3 className="text-lg font-bold text-slate-800">{title}</h3>
-          <button onClick={onClose} className="p-1.5 hover:bg-red-50 hover:text-red-500 rounded-full transition-colors text-slate-400"><X size={20} /></button>
-        </div>
-        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">{children}</div>
-      </div>
-    </div>
-  );
-};
+// 导入已提取的通用组件
+import Modal from './components/common/Modal';
+import ToggleSwitch from './components/common/ToggleSwitch';
+import StatusBadge from './components/common/StatusBadge';
+import CategoryTabs from './components/common/CategoryTabs';
+import FormItem from './components/common/FormItem';
 
-const ToggleSwitch = ({ enabled, onChange }: { enabled: boolean; onChange: (enabled: boolean) => void }) => {
-  return (
-    <button
-      onClick={() => onChange(!enabled)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${enabled ? 'bg-blue-600' : 'bg-slate-200'}`}
-    >
-      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'}`} />
-    </button>
-  );
-};
+// 导入已提取的页面组件
+import Dashboard from './components/pages/Dashboard';
+import UserManagement from './components/pages/UserManagement';
 
-const StatusBadge = ({ status }: { status: string }) => {
-  const styles: any = {
-    active: 'bg-green-50 text-green-600 border-green-200',
-    published: 'bg-green-50 text-green-600 border-green-200',
-    active_ad: 'bg-green-50 text-green-600 border-green-200',
-    success: 'bg-green-50 text-green-600 border-green-200',
-    suspended: 'bg-slate-100 text-slate-500 border-slate-200',
-    hidden: 'bg-slate-100 text-slate-500 border-slate-200',
-    locked: 'bg-red-50 text-red-600 border-red-200',
-    failed: 'bg-red-50 text-red-600 border-red-200',
-    expired: 'bg-slate-100 text-slate-500 border-slate-200',
-    processing: 'bg-blue-50 text-blue-600 border-blue-200',
-    true: 'bg-green-50 text-green-600 border-green-200',
-    false: 'bg-slate-100 text-slate-500 border-slate-200'
-  };
-  const labels: any = {
-    active: '正常', suspended: '停用', published: '展示中', hidden: '已下架', active_ad: '进行中', locked: '已锁定',
-    success: '成功', failed: '失败', processing: '生成中', expired: '已过期', true: '已启用', false: '已停用'
-  };
-  return <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${styles[status]}`}>{labels[status] || status}</span>;
-};
+// 导入已提取的布局组件
+import Login from './components/layout/Login';
+import AdminLayout from './components/layout/AdminLayout';
 
-const CategoryTabs = ({ selected, onSelect }: { selected: string, onSelect: (c: any) => void }) => {
-  const tabs = [ { id: 'medical', label: '医美类' }, { id: 'ecommerce', label: '电商类' }, { id: 'life', label: '生活服务类' } ];
-  return (
-    <div className="flex bg-white rounded-lg p-1 border border-slate-200 w-fit">
-      {tabs.map(tab => (
-        <button key={tab.id} onClick={() => onSelect(tab.id)} className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${selected === tab.id ? 'bg-blue-50 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>{tab.label}</button>
-      ))}
-    </div>
-  );
-};
-
-const FormItem = ({ label, required, children }: { label: string, required?: boolean, children?: React.ReactNode }) => (
-  <div><label className="text-sm font-medium text-slate-700 mb-1.5 block">{label}{required && <span className="text-red-500 ml-1">*</span>}</label>{children}</div>
-);
+// 导入自定义 hooks
+import { useAuth } from './hooks/useAuth';
+import { useAssets } from './hooks/useAssets';
+import { useGenerationRecords } from './hooks/useGenerationRecords';
+import { useInvitations } from './hooks/useInvitations';
+import { useAccounts } from './hooks/useAccounts';
 
 // --- Page Implementations ---
-const Dashboard = () => {
-  const [activeCategory, setActiveCategory] = useState('medical');
-  const [timeRange, setTimeRange] = useState('week');
-  const [customDates, setCustomDates] = useState({ start: '', end: '' });
-  
-  const trendData = [ { date: '10-24', merchants: 14, consumption: 9200 }, { date: '10-25', merchants: 16, consumption: 10400 }, { date: '10-26', merchants: 22, consumption: 8800 }, { date: '10-27', merchants: 18, consumption: 11200 }, { date: '10-28', merchants: 20, consumption: 9600 }, { date: '10-29', merchants: 15, consumption: 7400 }, { date: '10-30', merchants: 21, consumption: 10200 }, ];
-  const rankingData = [ { name: '美好医美', value: 5200 }, { name: '张氏诊所', value: 4500 }, { name: '康康体检', value: 3800 }, { name: '爱美中心', value: 3500 }, { name: '美莱整形', value: 2400 } ];
-
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-        <h2 className="text-xl font-bold text-slate-800">数据概览</h2>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto">
-          <CategoryTabs selected={activeCategory} onSelect={setActiveCategory} />
-          <div className="flex items-center gap-2 bg-white rounded-lg p-1 border border-slate-200">
-            {['today', 'week', 'month', 'custom'].map(t => (
-                <button 
-                    key={t} 
-                    onClick={() => setTimeRange(t)}
-                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${timeRange === t ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                >
-                    {t === 'today' ? '当天' : t === 'week' ? '当周' : t === 'month' ? '当月' : '自定义时间段'}
-                </button>
-            ))}
-          </div>
-          {timeRange === 'custom' && (
-              <div className="flex items-center gap-2 animate-fade-in bg-white p-1 rounded-lg border border-slate-200">
-                  <input type="date" value={customDates.start} onChange={e => setCustomDates({...customDates, start: e.target.value})} className="text-xs p-1 border rounded" />
-                  <span className="text-slate-400">-</span>
-                  <input type="date" value={customDates.end} onChange={e => setCustomDates({...customDates, end: e.target.value})} className="text-xs p-1 border rounded" />
-              </div>
-          )}
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="md:col-span-1 bg-gradient-to-br from-blue-500 to-blue-700 p-6 rounded-xl text-white relative overflow-hidden shadow-lg shadow-blue-200">
-          <p className="text-xs font-medium opacity-80 mb-2">平台积分总余额</p>
-          <div className="flex items-baseline gap-2"><span className="text-3xl font-extrabold tracking-tight">2,458,200</span><span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-bold">总池</span></div>
-          <Coins size={80} className="absolute -right-4 -bottom-4 opacity-10" />
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-slate-100 flex items-center gap-4 card-shadow">
-          <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center text-slate-300"><User size={24}/></div>
-          <div><p className="text-xs text-slate-400 mb-1">医美类 商家总数</p><div className="flex items-center gap-2"><span className="text-2xl font-bold text-slate-800">324</span><span className="text-[10px] text-green-500 font-bold bg-green-50 px-1 rounded">+5%</span></div></div>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-slate-100 flex items-center gap-4 card-shadow">
-          <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center text-slate-300"><ArrowRight size={24}/></div>
-          <div><p className="text-xs text-slate-400 mb-1">产生消耗商家数</p><div className="flex items-center gap-2"><span className="text-2xl font-bold text-slate-800">280</span><span className="text-[10px] text-blue-500 font-bold">85% 活跃</span></div></div>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-slate-100 flex items-center gap-4 card-shadow">
-          <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center text-slate-300"><Search size={24}/></div>
-          <div><p className="text-xs text-slate-400 mb-1">该类目总消耗</p><div className="flex items-center gap-2"><span className="text-2xl font-bold text-slate-800">125,400</span><span className="text-[10px] text-orange-500 font-bold">积分</span></div></div>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl border border-slate-100 card-shadow h-[400px]">
-          <h4 className="font-bold text-slate-800 mb-8">每日数据趋势 (医美)</h4>
-          <ResponsiveContainer width="100%" height="80%"><AreaChart data={trendData}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" /><XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} /><YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} domain={[0, 24]} /><YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} domain={[0, 12000]} /><ChartTooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}} /><Area yAxisId="left" type="monotone" dataKey="merchants" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.05} strokeWidth={2} name="新增商家" /><Area yAxisId="right" type="monotone" dataKey="consumption" stroke="#f97316" fill="#f97316" fillOpacity={0.05} strokeWidth={2} name="消耗量" /></AreaChart></ResponsiveContainer>
-          <div className="flex justify-center gap-6 mt-2 text-[10px] font-bold"><div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full border-2 border-blue-500" /> 新增商家</div><div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full border-2 border-orange-500" /> 消耗量</div></div>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-slate-100 card-shadow"><h4 className="font-bold text-slate-800 mb-8">消耗排名 Top 5</h4><div className="h-[300px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={rankingData} layout="vertical" margin={{ left: 20 }}><XAxis type="number" hide /><YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#475569', fontWeight: 600}} /><Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={24}>{rankingData.map((_, i) => <Cell key={i} fillOpacity={1 - i * 0.15} />)}</Bar></BarChart></ResponsiveContainer></div></div>
-      </div>
-    </div>
-  );
-};
-
-const UserManagement = () => {
-  const [users, setUsers] = useState<UserType[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [modal, setModal] = useState<{ isOpen: boolean, user: Partial<UserType> | null }>({ isOpen: false, user: null });
-  const [giftModal, setGiftModal] = useState<{ isOpen: boolean, user: UserType | null }>({ isOpen: false, user: null });
-  const [activeCategory, setActiveCategory] = useState('medical');
-  const [search, setSearch] = useState('');
-  
-  const loadUsers = async () => {
-    setLoading(true);
-    try {
-      const data = await userAPI.getUsers(activeCategory, search || undefined);
-      setUsers(data);
-    } catch (err: any) {
-      alert('加载用户列表失败: ' + (err.message || '未知错误'));
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  useEffect(() => {
-    loadUsers();
-  }, [activeCategory, search]);
-  
-  const filteredUsers = users.filter(u => u.category === activeCategory && (search === '' || u.username?.includes(search) || u.email?.includes(search) || u.phone?.includes(search)));
-  
-  const handleSave = async (user: Partial<UserType>) => {
-    try {
-      if (user.id) {
-        await userAPI.updateUser(user.id.toString(), user);
-      } else {
-        await userAPI.createUser({ ...user, category: activeCategory });
-      }
-      await loadUsers();
-      setModal({ isOpen: false, user: null });
-    } catch (err: any) {
-      alert('保存失败: ' + (err.message || '未知错误'));
-    }
-  };
-  
-  const handleDelete = async (id: string) => { 
-    if (!window.confirm('确认删除该用户吗?')) return;
-    try {
-      await userAPI.deleteUser(id);
-      await loadUsers();
-    } catch (err: any) {
-      alert('删除失败: ' + (err.message || '未知错误'));
-    }
-  };
-
-  const handleGiftPoints = async (points: number) => {
-    if(!giftModal.user) return;
-    try {
-        await userAPI.giftPoints(giftModal.user.id.toString(), points);
-        await loadUsers();
-        setGiftModal({isOpen: false, user: null});
-    } catch (err: any) {
-        alert('赠送积分失败: ' + (err.message || '未知错误'));
-    }
-  };
-
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 card-shadow flex flex-col h-[calc(100vh-140px)] animate-fade-in">
-      <div className="p-6 border-b border-slate-100 flex justify-between items-center"><h3 className="text-xl font-bold text-slate-800">用户管理</h3><button onClick={() => setModal({ isOpen: true, user: {} })} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2"><Plus size={16}/> 新增用户</button></div>
-      <div className="p-4 bg-slate-50/50 border-b flex justify-between items-center"><CategoryTabs selected={activeCategory} onSelect={setActiveCategory} /><div className="relative w-72"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input type="text" placeholder="搜索邮箱/用户名/手机..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm" /></div></div>
-      <div className="flex-1 overflow-auto">
-        {loading ? (
-          <div className="flex items-center justify-center h-64 text-slate-400">加载中...</div>
-        ) : filteredUsers.length === 0 ? (
-          <div className="flex items-center justify-center h-64 text-slate-400">暂无数据</div>
-        ) : (
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 border-b text-[11px] uppercase"><tr><th className="px-6 py-4">邮箱</th><th className="px-6 py-4">用户名</th><th className="px-6 py-4">手机</th><th className="px-6 py-4">余额</th><th className="px-6 py-4">状态</th><th className="px-6 py-4 text-right">操作</th></tr></thead>
-            <tbody className="divide-y">{filteredUsers.map(u => <tr key={u.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-4">{u.email}</td><td className="px-6 py-4">{u.username}</td><td className="px-6 py-4">{u.phone || '-'}</td><td className="px-6 py-4 font-bold">{u.balance || 0}</td><td className="px-6 py-4"><StatusBadge status={u.status || 'active'} /></td>
-                  <td className="px-6 py-4 text-right flex justify-end gap-2">
-                      <button onClick={() => setGiftModal({isOpen: true, user: u})} className="p-2 text-orange-600 hover:bg-orange-50 rounded" title="赠送积分"><Gift size={16}/></button>
-                      <button onClick={() => setModal({isOpen: true, user: u})} className="p-2 text-blue-600 hover:bg-blue-50 rounded" title="编辑用户"><Edit size={16}/></button>
-                      <button onClick={() => handleDelete(u.id)} className="p-2 text-red-600 hover:bg-red-50 rounded" title="删除用户"><Trash2 size={16}/></button>
-                  </td>
-            </tr>)}</tbody>
-          </table>
-        )}
-      </div>
-      {modal.isOpen && <Modal isOpen={true} onClose={() => setModal({isOpen: false, user: null})} title={modal.user?.id ? '编辑用户' : '新增用户'}>
-        <UserForm user={modal.user} onSave={handleSave} onCancel={() => setModal({isOpen: false, user: null})} />
-      </Modal>}
-      {giftModal.isOpen && <GiftModal user={giftModal.user} onClose={() => setGiftModal({isOpen: false, user: null})} onConfirm={handleGiftPoints} />}
-    </div>
-  );
-};
-const UserForm = ({ user, onSave, onCancel }: { user: Partial<UserType> | null; onSave: (user: Partial<UserType>) => void; onCancel: () => void }) => {
-  const [formData, setFormData] = useState(user || {});
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, [e.target.name]: e.target.value });
-  return <div className="space-y-4">
-      <FormItem label="邮箱" required><input name="email" value={formData.email || ''} onChange={handleChange} className="w-full p-2 border rounded" /></FormItem>
-      <FormItem label="用户名" required><input name="username" value={formData.username || ''} onChange={handleChange} className="w-full p-2 border rounded" /></FormItem>
-      <FormItem label="手机号"><input name="phone" value={formData.phone || ''} onChange={handleChange} className="w-full p-2 border rounded" /></FormItem>
-      <FormItem label="登录密码"><input name="password" type="password" placeholder={user?.id ? "留空则不修改" : "设置密码"} value={formData.password || ''} onChange={handleChange} className="w-full p-2 border rounded" /></FormItem>
-      <FormItem label="公司/机构"><input name="company" value={formData.company || ''} onChange={handleChange} className="w-full p-2 border rounded" /></FormItem>
-      {/* Explicitly disabled balance input */}
-      <FormItem label="积分余额"><input value={formData.balance || 0} disabled className="w-full p-2 border rounded bg-slate-100 text-slate-500 cursor-not-allowed" /></FormItem>
-      <div className="flex justify-end gap-4 pt-4 border-t"><button onClick={onCancel}>取消</button><button onClick={() => onSave(formData)} className="bg-blue-600 text-white px-4 py-2 rounded-lg">保存</button></div>
-  </div>
-}
-const GiftModal = ({ user, onClose, onConfirm }: { user: UserType | null, onClose: () => void, onConfirm: (points: number) => void }) => {
-    const [points, setPoints] = useState(100);
-    const [validity, setValidity] = useState('1_month');
-    if(!user) return null;
-    return <Modal isOpen={true} onClose={onClose} title={`赠送积分 - ${user.username}`}>
-        <div className="space-y-4">
-            <FormItem label="赠送积分数量"><input type="number" value={points} onChange={e => setPoints(parseInt(e.target.value))} className="w-full p-2 border rounded" /></FormItem>
-            <FormItem label="有效期">
-                <select value={validity} onChange={e => setValidity(e.target.value)} className="w-full p-2 border rounded bg-white">
-                    <option value="1_month">1个月</option>
-                    <option value="3_months">3个月</option>
-                    <option value="1_year">1年</option>
-                    <option value="permanent">永久有效</option>
-                </select>
-            </FormItem>
-            <div className="bg-orange-50 p-3 rounded text-orange-800 text-sm">注意：积分将即时到账。</div>
-            <div className="flex justify-end gap-2 pt-4"><button onClick={onClose} className="px-4 py-2 hover:bg-slate-100 rounded">取消</button><button onClick={() => onConfirm(points)} className="px-4 py-2 bg-blue-600 text-white rounded">确认赠送</button></div>
-        </div>
-    </Modal>
-}
+// Dashboard 和 UserManagement 已提取到 components/pages 目录
 
 const SquareManagement = () => {
   const [activeCategory, setActiveCategory] = useState('medical');
@@ -570,12 +307,30 @@ const AssetsManagement = () => {
 
 const MarketingManagement = () => {
   const [activeCategory, setActiveCategory] = useState('medical');
-  const [ads] = useState<MarketingAd[]>(MOCK_ADS);
+  const [ads, setAds] = useState<MarketingAd[]>(MOCK_ADS);
   const [manualModal, setManualModal] = useState(false);
   const [csModal, setCsModal] = useState(false);
   const [manuals, setManuals] = useState<ManualConfig[]>(MOCK_MANUALS);
   const [editAd, setEditAd] = useState<Partial<MarketingAd> | null>(null);
   const [csConfig, setCsConfig] = useState({ image: '', text: '' });
+  const [csUploading, setCsUploading] = useState(false); // 客服图片上传状态
+
+  // 加载广告列表
+  const loadAds = async () => {
+    try {
+      const data = await marketingAPI.getAds(activeCategory);
+      setAds(data);
+    } catch (error) {
+      console.error('加载广告列表失败:', error);
+      // 如果API调用失败，使用Mock数据
+      setAds(MOCK_ADS);
+    }
+  };
+
+  // 当分类改变时重新加载广告
+  useEffect(() => {
+    loadAds();
+  }, [activeCategory]);
 
   const filteredAds = ads.filter(ad => ad.siteCategory === activeCategory);
 
@@ -641,16 +396,64 @@ const MarketingManagement = () => {
               <FormItem label="客服二维码图片">
                   <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:bg-slate-50 cursor-pointer flex flex-col items-center justify-center text-slate-400 relative overflow-hidden group h-48">
                       {csConfig.image ? (
-                          <img src={csConfig.image} className="h-full object-contain" />
+                          <>
+                            <img src={csConfig.image} className="h-full object-contain" />
+                            <p className="text-xs text-blue-600 mt-2">
+                              {csUploading ? '上传中...' : '点击重新上传'}
+                            </p>
+                          </>
                       ) : (
                           <>
                             <Upload size={32} className="mb-2"/>
-                            <span className="text-xs">点击上传二维码图片</span>
+                            <span className="text-xs">{csUploading ? '上传中...' : '点击上传二维码图片'}</span>
                           </>
                       )}
-                      <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => {
-                          if(e.target.files?.[0]) setCsConfig({...csConfig, image: URL.createObjectURL(e.target.files[0])});
-                      }}/>
+                      <input 
+                        type="file" 
+                        accept="image/jpeg,image/png,image/webp"
+                        className="absolute inset-0 opacity-0 cursor-pointer" 
+                        disabled={csUploading}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            // 检查文件大小（5MB）
+                            if (file.size > 5 * 1024 * 1024) {
+                              alert('图片大小不能超过 5MB');
+                              return;
+                            }
+                            // 检查文件类型
+                            const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+                            if (!validTypes.includes(file.type)) {
+                              alert('只支持 JPG、PNG、WEBP 格式的图片');
+                              return;
+                            }
+                            
+                            // 先创建预览 URL
+                            const previewUrl = URL.createObjectURL(file);
+                            setCsConfig({...csConfig, image: previewUrl});
+                            
+                            // 开始上传
+                            setCsUploading(true);
+                            try {
+                              // 调用后端上传接口，上传到 images/ 文件夹
+                              const uploadedUrl = await uploadAPI.uploadImage(file, 'images/');
+                              // 使用服务器返回的URL替换预览URL
+                              setCsConfig({...csConfig, image: uploadedUrl});
+                              // 释放预览URL
+                              URL.revokeObjectURL(previewUrl);
+                            } catch (error) {
+                              // 上传失败，恢复原状态
+                              console.error('图片上传失败:', error);
+                              alert('图片上传失败：' + (error instanceof Error ? error.message : '未知错误'));
+                              setCsConfig({...csConfig, image: ''});
+                              // 释放预览URL
+                              URL.revokeObjectURL(previewUrl);
+                            } finally {
+                              setCsUploading(false);
+                            }
+                          }
+                        }}
+                      />
                   </div>
               </FormItem>
               <FormItem label="联系方式文本">
@@ -665,14 +468,66 @@ const MarketingManagement = () => {
           </div>
       </Modal>
 
-      {editAd && <AdEditorModal ad={editAd} onClose={() => setEditAd(null)} />}
+      {editAd && <AdEditorModal ad={editAd} onClose={() => setEditAd(null)} onSave={loadAds} />}
     </div>
   );
 };
 
-const AdEditorModal = ({ ad, onClose }: { ad: Partial<MarketingAd>; onClose: () => void }) => {
+const AdEditorModal = ({ ad, onClose, onSave }: { ad: Partial<MarketingAd>; onClose: () => void; onSave?: () => void }) => {
   const [formData, setFormData] = useState(ad);
   const [activeTab, setActiveTab] = useState(ad.linkType || 'external');
+  const fileInputRef = useRef<HTMLInputElement>(null); // 文件输入引用
+  const [uploading, setUploading] = useState(false); // 上传状态
+  const [saving, setSaving] = useState(false); // 保存状态
+
+  // 保存广告
+  const handleSave = async () => {
+    // 验证必填字段
+    if (!formData.title) {
+      alert('请输入广告标题');
+      return;
+    }
+    if (!formData.imageUrl) {
+      alert('请上传广告图片');
+      return;
+    }
+    if (!formData.startDate || !formData.endDate) {
+      alert('请选择开始时间和结束时间');
+      return;
+    }
+
+    // 同步activeTab到formData.linkType
+    const finalData = {
+      ...formData,
+      linkType: activeTab,
+      isFullScreen: true, // 全屏广告
+      isActive: formData.isActive !== undefined ? formData.isActive : true, // 默认激活
+    };
+
+    setSaving(true);
+    try {
+      if (ad.id) {
+        // 更新广告
+        await marketingAPI.updateAd(ad.id.toString(), finalData);
+        alert('广告更新成功');
+      } else {
+        // 创建广告
+        await marketingAPI.createAd(finalData);
+        alert('广告创建成功');
+      }
+      // 刷新列表
+      if (onSave) {
+        onSave();
+      }
+      // 关闭弹窗
+      onClose();
+    } catch (error) {
+      console.error('保存广告失败:', error);
+      alert('保存失败：' + (error instanceof Error ? error.message : '未知错误'));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <Modal isOpen={true} onClose={onClose} title={ad.id ? "编辑全屏广告" : "新增全屏广告"} size="full">
@@ -693,10 +548,74 @@ const AdEditorModal = ({ ad, onClose }: { ad: Partial<MarketingAd>; onClose: () 
           </div>
 
           <FormItem label="广告图片 (全屏展示)">
-            <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center flex flex-col items-center justify-center text-sm text-slate-500 cursor-pointer hover:bg-slate-50 hover:border-blue-400 transition-all group">
-              <Upload size={32} className="mb-3 text-slate-300 group-hover:text-blue-500" />
-              <p>点击上传本地图片</p>
-              <p className="text-xs text-slate-400 mt-1">支持 JPG, PNG, WEBP (Max 5MB)</p>
+            <div 
+              className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center flex flex-col items-center justify-center text-sm text-slate-500 cursor-pointer hover:bg-slate-50 hover:border-blue-400 transition-all group relative overflow-hidden"
+              onClick={() => fileInputRef.current?.click()} // 点击触发文件选择
+            >
+              {/* 隐藏的文件输入 */}
+              <input 
+                ref={fileInputRef}
+                type="file" 
+                accept="image/jpeg,image/png,image/webp" 
+                className="hidden" 
+                disabled={uploading} // 上传中禁用
+                onChange={async (e) => {
+                  // 处理文件选择
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    // 检查文件大小（5MB = 5 * 1024 * 1024 字节）
+                    if (file.size > 5 * 1024 * 1024) {
+                      alert('图片大小不能超过 5MB');
+                      return;
+                    }
+                    // 检查文件类型
+                    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+                    if (!validTypes.includes(file.type)) {
+                      alert('只支持 JPG、PNG、WEBP 格式的图片');
+                      return;
+                    }
+                    
+                    // 先创建预览 URL（用于立即显示预览）
+                    const previewUrl = URL.createObjectURL(file);
+                    setFormData({...formData, imageUrl: previewUrl});
+                    
+                    // 开始上传
+                    setUploading(true);
+                    try {
+                      // 调用后端上传接口，上传到 images/ 文件夹
+                      const uploadedUrl = await uploadAPI.uploadImage(file, 'images/');
+                      // 使用服务器返回的URL替换预览URL
+                      setFormData({...formData, imageUrl: uploadedUrl});
+                      // 释放预览URL
+                      URL.revokeObjectURL(previewUrl);
+                    } catch (error) {
+                      // 上传失败，恢复原状态
+                      console.error('图片上传失败:', error);
+                      alert('图片上传失败：' + (error instanceof Error ? error.message : '未知错误'));
+                      setFormData({...formData, imageUrl: ad.imageUrl || ''});
+                      // 释放预览URL
+                      URL.revokeObjectURL(previewUrl);
+                    } finally {
+                      setUploading(false);
+                    }
+                  }
+                }}
+              />
+              {/* 如果已有图片，显示预览 */}
+              {formData.imageUrl ? (
+                <>
+                  <img src={formData.imageUrl} alt="广告图片预览" className="max-w-full max-h-64 object-contain mb-2" />
+                  <p className="text-xs text-blue-600 mt-2">
+                    {uploading ? '上传中...' : '点击重新上传'}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Upload size={32} className="mb-3 text-slate-300 group-hover:text-blue-500" />
+                  <p>{uploading ? '上传中...' : '点击上传本地图片'}</p>
+                  <p className="text-xs text-slate-400 mt-1">支持 JPG, PNG, WEBP (Max 5MB)</p>
+                </>
+              )}
             </div>
           </FormItem>
 
@@ -709,8 +628,24 @@ const AdEditorModal = ({ ad, onClose }: { ad: Partial<MarketingAd>; onClose: () 
           
           <FormItem label="跳转类型">
             <div className="flex bg-slate-100 p-1.5 rounded-lg">
-              <button onClick={() => setActiveTab('external')} className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'external' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'}`}>外部网页</button>
-              <button onClick={() => setActiveTab('internal_rich')} className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'internal_rich' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'}`}>富文本详情</button>
+              <button 
+                onClick={() => {
+                  setActiveTab('external');
+                  setFormData({...formData, linkType: 'external'});
+                }} 
+                className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'external' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'}`}
+              >
+                外部网页
+              </button>
+              <button 
+                onClick={() => {
+                  setActiveTab('internal_rich');
+                  setFormData({...formData, linkType: 'internal_rich'});
+                }} 
+                className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'internal_rich' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'}`}
+              >
+                富文本详情
+              </button>
             </div>
           </FormItem>
 
@@ -755,8 +690,20 @@ const AdEditorModal = ({ ad, onClose }: { ad: Partial<MarketingAd>; onClose: () 
             </div>
           </div>
           <div className="p-4 bg-slate-50 border-t flex justify-end gap-4">
-            <button className="px-6 py-2 rounded-lg hover:bg-slate-200 text-slate-600 font-medium" onClick={onClose}>取消</button>
-            <button className="px-6 py-2 rounded-lg bg-blue-600 text-white font-bold shadow-md hover:bg-blue-700 hover:shadow-lg transition-all">保存广告配置</button>
+            <button 
+              className="px-6 py-2 rounded-lg hover:bg-slate-200 text-slate-600 font-medium" 
+              onClick={onClose}
+              disabled={saving}
+            >
+              取消
+            </button>
+            <button 
+              className="px-6 py-2 rounded-lg bg-blue-600 text-white font-bold shadow-md hover:bg-blue-700 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed" 
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? '保存中...' : '保存广告配置'}
+            </button>
           </div>
         </div>
       </div>
@@ -1304,144 +1251,44 @@ const AccountManagement = () => {
 
 const ModulePlaceholder = ({ title }: { title: string }) => <div className="p-6 bg-white rounded-xl">Module: {title}</div>;
 
-const Login = ({ onLogin }: { onLogin: () => void }) => {
-    const [account, setAccount] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    
-    const handleLogin = async () => {
-        if (!account || !password) {
-            setError('请输入账号和密码');
-            return;
-        }
-        setLoading(true);
-        setError('');
-        try {
-            await authAPI.login({ account, password });
-            onLogin();
-        } catch (err: any) {
-            setError(err.message || '登录失败，请检查账号密码');
-        } finally {
-            setLoading(false);
-        }
-    };
-    
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-100">
-            <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-200">
-                <div className="flex justify-center mb-6">
-                    <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-lg transform rotate-3">M</div>
-                </div>
-                <h2 className="text-2xl font-bold text-center text-slate-800 mb-2">Meitou 平台管理系统</h2>
-                <p className="text-center text-slate-400 text-sm mb-8">V2.6.4 Authorized Access Only</p>
-                <div className="space-y-4">
-                    {error && <div className="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm">{error}</div>}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">管理员账号</label>
-                        <input 
-                            type="text" 
-                            value={account} 
-                            onChange={e => { setAccount(e.target.value); setError(''); }} 
-                            onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                            className="w-full px-4 py-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
-                            placeholder="请输入账号/邮箱" 
-                            disabled={loading}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">登录密码</label>
-                        <input 
-                            type="password" 
-                            value={password} 
-                            onChange={e => { setPassword(e.target.value); setError(''); }} 
-                            onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                            className="w-full px-4 py-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
-                            placeholder="••••••••" 
-                            disabled={loading}
-                        />
-                    </div>
-                    <button 
-                        onClick={handleLogin} 
-                        disabled={loading}
-                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold py-3 rounded-lg shadow-md transition-all mt-2 active:scale-95 disabled:cursor-not-allowed"
-                    >
-                        {loading ? '登录中...' : '立即登录'}
-                    </button>
-                </div>
-                <div className="mt-6 text-center text-xs text-slate-400">
-                    &copy; 2024 Meitou Technology. All rights reserved.
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// --- Main Layout ---
-const AdminLayout = ({ onLogout }: { onLogout: () => void }) => {
-  const [activeTab, setActiveTab] = useState<NavSection>('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [openMenus, setOpenMenus] = useState<string[]>(['system']);
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard': return <Dashboard />;
-      case 'users': return <UserManagement />;
-      case 'square': return <SquareManagement />;
-      case 'assets': return <AssetsManagement />;
-      case 'marketing': return <MarketingManagement />;
-      case 'menus': return <MenuManagement />;
-      case 'api': return <ApiManagement />;
-      case 'payment': return <PaymentManagement />;
-      case 'gen_records': return <GenerationRecords />;
-      case 'invitations': return <InvitationManagement />;
-      case 'accounts': return <AccountManagement />;
-      default: return <ModulePlaceholder title={activeTab} />;
-    }
-  };
-
-  const getSubIcon = (id: string) => {
-    const iconMap: Record<string, React.ReactNode> = { 'menus': <MenuIcon size={14} />, 'api': <Key size={14} />, 'payment': <CreditCard size={14} />, 'gen_records': <FileClock size={14} />, 'invitations': <Ticket size={14} />, 'accounts': <ShieldAlert size={14} /> };
-    return iconMap[id] || <div />;
-  };
-
-  return (
-    <div className="flex h-screen bg-[#f1f5f9] font-sans text-slate-800 overflow-hidden">
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-sidebar-dark text-slate-400 transition-all duration-300 flex flex-col z-50 shrink-0`}>
-        <div className="h-16 flex items-center px-6 gap-3 shrink-0"><div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black shadow-lg">M</div>{sidebarOpen && <span className="text-white font-bold tracking-tight text-lg">Meitou V2.6.4</span>}</div>
-        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-          {SIDEBAR_MENU.map(item => {
-             if (item.children) return (
-               <div key={item.id}>
-                 <button onClick={() => setOpenMenus(p => p.includes(item.id) ? p.filter(i => i !== item.id) : [...p, item.id])} className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium"><div className="flex items-center gap-3"><span>{item.icon}</span>{sidebarOpen && <span>{item.label}</span>}</div>{sidebarOpen && <ChevronDown size={14} className={`transition-transform ${openMenus.includes(item.id) ? 'rotate-180' : ''}`} />}</button>
-                 {sidebarOpen && openMenus.includes(item.id) && <div className="pl-4 ml-5 border-l border-slate-800 space-y-1 mt-1">{item.children.map(child => <button key={child.id} onClick={() => setActiveTab(child.id as NavSection)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium ${activeTab === child.id ? 'text-white' : 'hover:text-white'}`}>{getSubIcon(child.id)}<span>{child.label}</span></button>)}</div>}
-               </div>
-             );
-             return <button key={item.id} onClick={() => setActiveTab(item.id as NavSection)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium ${activeTab === item.id ? 'sidebar-active' : 'hover:bg-sidebar-hover hover:text-white'}`}>{item.icon}{sidebarOpen && <span>{item.label}</span>}</button>;
-          })}
-        </nav>
-        <div className="p-4 border-t border-slate-800"><button onClick={onLogout} className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-red-400 rounded-lg text-sm"><LogOut size={18} />{sidebarOpen && <span>退出登录</span>}</button></div>
-      </aside>
-      <div className="flex-1 flex flex-col overflow-hidden"><header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-40">
-          <div className="flex items-center gap-6"><button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 hover:bg-slate-50 rounded-lg text-slate-400"><MenuIcon size={20} /></button></div>
-          <div className="flex items-center gap-6"><div className="text-xs font-bold text-green-600">V2.6.4 运行正常</div><div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-black text-xs">A</div></div>
-        </header>
-        <main className="flex-1 overflow-y-auto p-8 bg-slate-50/50"><div className="max-w-[1600px] mx-auto">{renderContent()}</div></main>
-      </div>
-    </div>
-  );
-};
+// Login 和 AdminLayout 已提取到 components/layout 目录
 
 // --- Root Component ---
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  useEffect(() => { setIsLoggedIn(!!localStorage.getItem('vidu_admin_session')); document.title = "Meitou Admin | V2.6.4"; }, []);
-  const handleLogin = () => { setIsLoggedIn(true); };
+  // 使用自定义 hook 管理登录状态
+  const { isLoggedIn, setIsLoggedIn } = useAuth();
+  
+  // 处理登录
+  const handleLogin = () => { 
+    setIsLoggedIn(true); 
+  };
+  
+  // 处理登出
   const handleLogout = async () => { 
-    try { await authAPI.logout(); } catch (err) { console.error('登出失败:', err); }
+    try { 
+      await authAPI.logout(); 
+    } catch (err) { 
+      console.error('登出失败:', err); 
+    }
     setIsLoggedIn(false); 
   };
-  return isLoggedIn ? <AdminLayout onLogout={handleLogout} /> : <Login onLogin={handleLogin} />;
+  
+  return isLoggedIn ? (
+    <AdminLayout 
+      onLogout={handleLogout}
+      SquareManagement={SquareManagement}
+      AssetsManagement={AssetsManagement}
+      MarketingManagement={MarketingManagement}
+      MenuManagement={MenuManagement}
+      ApiManagement={ApiManagement}
+      PaymentManagement={PaymentManagement}
+      GenerationRecords={GenerationRecords}
+      InvitationManagement={InvitationManagement}
+      AccountManagement={AccountManagement}
+    />
+  ) : (
+    <Login onLogin={handleLogin} />
+  );
 }
 
 export default App;

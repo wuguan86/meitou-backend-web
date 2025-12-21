@@ -16,7 +16,7 @@ export interface LoginResponse {
 
 // 登录
 export const login = async (request: LoginRequest): Promise<LoginResponse> => {
-  const response = await post<LoginResponse>('/auth/login', request);
+  const response = await post<LoginResponse>('/admin/auth/login', request);
   // 保存 Token
   if (response.token) {
     localStorage.setItem('admin_token', response.token);
@@ -27,7 +27,7 @@ export const login = async (request: LoginRequest): Promise<LoginResponse> => {
 
 // 登出
 export const logout = async (): Promise<void> => {
-  await post('/auth/logout');
+  await post('/admin/auth/logout');
   localStorage.removeItem('admin_token');
   localStorage.removeItem('vidu_admin_session');
 };
@@ -38,7 +38,7 @@ export const checkAuth = async (): Promise<boolean> => {
     const token = localStorage.getItem('admin_token');
     if (!token) return false;
     
-    const response = await get<boolean>('/auth/check');
+    const response = await get<boolean>('/admin/auth/check');
     return response;
   } catch {
     return false;
