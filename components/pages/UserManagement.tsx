@@ -8,10 +8,11 @@ import StatusBadge from '../common/StatusBadge';
 import Modal from '../common/Modal';
 import UserForm from './UserForm';
 import GiftModal from './GiftModal';
+import { SITES, SiteId } from '../../constants/sites';
 
 // UserManagement 组件 - 用户管理页面
 const UserManagement = () => {
-  const [activeCategory, setActiveCategory] = useState('medical'); // 当前分类
+  const [activeSiteId, setActiveSiteId] = useState<SiteId>(SITES.MEDICAL); // 当前站点ID（默认医美类）
   const [search, setSearch] = useState(''); // 搜索关键词
   const [modal, setModal] = useState<{ isOpen: boolean, user: Partial<User> | null }>({ 
     isOpen: false, 
@@ -23,17 +24,17 @@ const UserManagement = () => {
   }); // 赠送积分弹窗状态
   
   // 使用自定义 hook 获取用户数据
-  const { users, loading, loadUsers } = useUsers(activeCategory, search);
+  const { users, loading, loadUsers } = useUsers(activeSiteId, search);
   
   // 保存用户（新增或编辑）
   const handleSave = async (user: Partial<User>) => {
     try {
       if (user.id) {
         // 编辑用户
-        await userAPI.updateUser(user.id.toString(), user);
+        await userAPI.updateUser(user.id.toString(), activeSiteId, user);
       } else {
         // 新增用户
-        await userAPI.createUser({ ...user, category: activeCategory });
+        await userAPI.createUser(activeSiteId, { ...user, siteId: activeSiteId });
       }
       await loadUsers(); // 重新加载列表
       setModal({ isOpen: false, user: null });
@@ -46,7 +47,7 @@ const UserManagement = () => {
   const handleDelete = async (id: string) => {
     if (!window.confirm('确认删除该用户吗?')) return;
     try {
-      await userAPI.deleteUser(id);
+      await userAPI.deleteUser(id, activeSiteId);
       await loadUsers(); // 重新加载列表
     } catch (err: any) {
       alert('删除失败: ' + (err.message || '未知错误'));
@@ -57,7 +58,7 @@ const UserManagement = () => {
   const handleGiftPoints = async (points: number) => {
     if (!giftModal.user) return;
     try {
-      await userAPI.giftPoints(giftModal.user.id.toString(), points);
+      await userAPI.giftPoints(giftModal.user.id.toString(), activeSiteId, points);
       await loadUsers(); // 重新加载列表
       setGiftModal({ isOpen: false, user: null });
     } catch (err: any) {
@@ -66,29 +67,29 @@ const UserManagement = () => {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 card-shadow flex flex-col h-[calc(100vh-140px)] animate-fade-in">
+    <div className="bg-white rounded-xl border border-slate-200 card-shadow flex flex-col h-[calc(100vh-140px)] sm:h-[calc(100vh-160px)] animate-fade-in">
       {/* 页面头部 */}
-      <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-        <h3 className="text-xl font-bold text-slate-800">用户管理</h3>
+      <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+        <h3 className="text-lg sm:text-xl font-bold text-slate-800">用户管理</h3>
         <button 
           onClick={() => setModal({ isOpen: true, user: {} })} 
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2"
+          className="bg-blue-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 w-full sm:w-auto justify-center"
         >
-          <Plus size={16}/> 新增用户
+          <Plus size={14} className="sm:w-4 sm:h-4"/> 新增用户
         </button>
       </div>
       
       {/* 筛选区域 */}
-      <div className="p-4 bg-slate-50/50 border-b flex justify-between items-center">
-        <CategoryTabs selected={activeCategory} onSelect={setActiveCategory} />
-        <div className="relative w-72">
+      <div className="p-3 sm:p-4 bg-slate-50/50 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+        <CategoryTabs selected={activeSiteId} onSelect={setActiveSiteId} />
+        <div className="relative w-full sm:w-72">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input 
             type="text" 
             placeholder="搜索邮箱/用户名/手机..." 
             value={search} 
             onChange={e => setSearch(e.target.value)} 
-            className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm" 
+            className="w-full pl-9 pr-4 py-2 border rounded-lg text-xs sm:text-sm" 
           />
         </div>
       </div>
@@ -96,32 +97,89 @@ const UserManagement = () => {
       {/* 用户列表 */}
       <div className="flex-1 overflow-auto">
         {loading ? (
-          <div className="flex items-center justify-center h-64 text-slate-400">加载中...</div>
+          <div className="flex items-center justify-center h-64 text-slate-400 text-sm">加载中...</div>
         ) : users.length === 0 ? (
-          <div className="flex items-center justify-center h-64 text-slate-400">暂无数据</div>
+          <div className="flex items-center justify-center h-64 text-slate-400 text-sm">暂无数据</div>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 border-b text-[11px] uppercase">
-              <tr>
-                <th className="px-6 py-4">邮箱</th>
-                <th className="px-6 py-4">用户名</th>
-                <th className="px-6 py-4">手机</th>
-                <th className="px-6 py-4">余额</th>
-                <th className="px-6 py-4">状态</th>
-                <th className="px-6 py-4 text-right">操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <>
+            {/* 桌面端表格 */}
+            <div className="hidden lg:block">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 border-b text-[11px] uppercase">
+                  <tr>
+                    <th className="px-4 lg:px-6 py-3 lg:py-4">邮箱</th>
+                    <th className="px-4 lg:px-6 py-3 lg:py-4">用户名</th>
+                    <th className="px-4 lg:px-6 py-3 lg:py-4">手机</th>
+                    <th className="px-4 lg:px-6 py-3 lg:py-4">余额</th>
+                    <th className="px-4 lg:px-6 py-3 lg:py-4">状态</th>
+                    <th className="px-4 lg:px-6 py-3 lg:py-4 text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {users.map(u => (
+                    <tr key={u.id} className="hover:bg-slate-50">
+                      <td className="px-4 lg:px-6 py-3 lg:py-4 text-xs sm:text-sm">{u.email}</td>
+                      <td className="px-4 lg:px-6 py-3 lg:py-4 text-xs sm:text-sm">{u.username}</td>
+                      <td className="px-4 lg:px-6 py-3 lg:py-4 text-xs sm:text-sm">{u.phone || '-'}</td>
+                      <td className="px-4 lg:px-6 py-3 lg:py-4 font-bold text-xs sm:text-sm">{u.balance || 0}</td>
+                      <td className="px-4 lg:px-6 py-3 lg:py-4">
+                        <StatusBadge status={u.status || 'active'} />
+                      </td>
+                      <td className="px-4 lg:px-6 py-3 lg:py-4 text-right flex justify-end gap-2">
+                        <button 
+                          onClick={() => setGiftModal({ isOpen: true, user: u })} 
+                          className="p-1.5 sm:p-2 text-orange-600 hover:bg-orange-50 rounded" 
+                          title="赠送积分"
+                        >
+                          <Gift size={14} className="sm:w-4 sm:h-4"/>
+                        </button>
+                        <button 
+                          onClick={() => setModal({ isOpen: true, user: u })} 
+                          className="p-1.5 sm:p-2 text-blue-600 hover:bg-blue-50 rounded" 
+                          title="编辑用户"
+                        >
+                          <Edit size={14} className="sm:w-4 sm:h-4"/>
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(u.id)} 
+                          className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded" 
+                          title="删除用户"
+                        >
+                          <Trash2 size={14} className="sm:w-4 sm:h-4"/>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* 移动端卡片列表 */}
+            <div className="lg:hidden space-y-3 p-3">
               {users.map(u => (
-                <tr key={u.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-4">{u.email}</td>
-                  <td className="px-6 py-4">{u.username}</td>
-                  <td className="px-6 py-4">{u.phone || '-'}</td>
-                  <td className="px-6 py-4 font-bold">{u.balance || 0}</td>
-                  <td className="px-6 py-4">
-                    <StatusBadge status={u.status || 'active'} />
-                  </td>
-                  <td className="px-6 py-4 text-right flex justify-end gap-2">
+                <div key={u.id} className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                  <div className="space-y-2 mb-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500">邮箱</span>
+                      <span className="text-sm font-medium text-slate-800 truncate flex-1 text-right ml-2">{u.email}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500">用户名</span>
+                      <span className="text-sm font-medium text-slate-800">{u.username}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500">手机</span>
+                      <span className="text-sm font-medium text-slate-800">{u.phone || '-'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500">余额</span>
+                      <span className="text-sm font-bold text-slate-800">{u.balance || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500">状态</span>
+                      <StatusBadge status={u.status || 'active'} />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
                     <button 
                       onClick={() => setGiftModal({ isOpen: true, user: u })} 
                       className="p-2 text-orange-600 hover:bg-orange-50 rounded" 
@@ -143,11 +201,11 @@ const UserManagement = () => {
                     >
                       <Trash2 size={16}/>
                     </button>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </div>
       

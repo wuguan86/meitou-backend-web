@@ -3,38 +3,39 @@
  */
 import { get, post, put, del } from './index';
 import { User } from '../types';
+import { SiteId } from '../constants/sites';
 
 // 获取用户列表
-export const getUsers = async (category?: string, search?: string): Promise<User[]> => {
+export const getUsers = async (siteId: SiteId, search?: string): Promise<User[]> => {
   const params = new URLSearchParams();
-  if (category) params.append('category', category);
+  params.append('siteId', siteId.toString()); // siteId 是必传参数
   if (search) params.append('search', search);
   
   return get<User[]>(`/admin/users?${params.toString()}`);
 };
 
 // 获取用户详情
-export const getUserById = async (id: string): Promise<User> => {
-  return get<User>(`/admin/users/${id}`);
+export const getUserById = async (id: string, siteId: SiteId): Promise<User> => {
+  return get<User>(`/admin/users/${id}?siteId=${siteId}`);
 };
 
 // 创建用户
-export const createUser = async (user: Partial<User>): Promise<User> => {
-  return post<User>('/admin/users', user);
+export const createUser = async (siteId: SiteId, user: Partial<User>): Promise<User> => {
+  return post<User>(`/admin/users?siteId=${siteId}`, user);
 };
 
 // 更新用户
-export const updateUser = async (id: string, user: Partial<User>): Promise<User> => {
-  return put<User>(`/admin/users/${id}`, user);
+export const updateUser = async (id: string, siteId: SiteId, user: Partial<User>): Promise<User> => {
+  return put<User>(`/admin/users/${id}?siteId=${siteId}`, user);
 };
 
 // 删除用户
-export const deleteUser = async (id: string): Promise<void> => {
-  await del(`/admin/users/${id}`);
+export const deleteUser = async (id: string, siteId: SiteId): Promise<void> => {
+  await del(`/admin/users/${id}?siteId=${siteId}`);
 };
 
 // 赠送积分
-export const giftPoints = async (id: string, points: number): Promise<User> => {
-  return post<User>(`/admin/users/${id}/gift-points?points=${points}`);
+export const giftPoints = async (id: string, siteId: SiteId, points: number): Promise<User> => {
+  return post<User>(`/admin/users/${id}/gift-points?siteId=${siteId}&points=${points}`);
 };
 

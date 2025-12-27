@@ -3,11 +3,12 @@
  */
 import { get, post, put } from './index';
 import { InvitationCode } from '../types';
+import { SiteId } from '../constants/sites';
 
 // 获取邀请码列表
-export const getInvitations = async (siteCategory?: string): Promise<InvitationCode[]> => {
+export const getInvitations = async (siteId?: SiteId): Promise<InvitationCode[]> => {
   const params = new URLSearchParams();
-  if (siteCategory) params.append('siteCategory', siteCategory);
+  if (siteId) params.append('siteId', siteId.toString());
   
   return get<InvitationCode[]>(`/admin/invitations?${params.toString()}`);
 };
@@ -17,7 +18,7 @@ export const generateInvitations = async (params: {
   count: number;
   points: number;
   maxUses: number;
-  siteCategory: string;
+  siteId: SiteId;
   channel?: string;
   validStartDate?: string;
   validEndDate?: string;

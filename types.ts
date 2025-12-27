@@ -1,3 +1,4 @@
+import { SiteId } from './constants/sites';
 
 // Data Models
 
@@ -12,8 +13,19 @@ export interface User {
   company?: string;
   balance: number;
   status: 'active' | 'suspended';
-  category: 'medical' | 'ecommerce' | 'life'; 
+  siteId: SiteId; // 站点ID：1=医美类, 2=电商类, 3=生活服务类
   createdAt: string;
+}
+
+export interface Site {
+  id: string;
+  name: string; // 站点名称（如：医美类、电商类、生活服务类）
+  code: string; // 站点代码（如：medical、ecommerce、life）
+  domain: string; // 域名（用于识别站点，如：medical.example.com）
+  status: 'active' | 'disabled'; // 状态：active-启用，disabled-禁用
+  description?: string; // 站点描述
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface BackendAccount {
@@ -28,7 +40,7 @@ export interface UserAsset {
   id: string;
   title: string;
   type: 'image' | 'video' | 'audio';
-  category: 'medical' | 'ecommerce' | 'life';
+  siteId: SiteId; // 站点ID：1=医美类, 2=电商类, 3=生活服务类
   url: string;
   thumbnail?: string; 
   uploadDate: string;
@@ -51,7 +63,7 @@ export interface MarketingAd {
   summary?: string; 
   tags?: string[];  
   isActive: boolean;
-  siteCategory: 'medical' | 'ecommerce' | 'life'; 
+  siteId: SiteId; // 站点ID：1=医美类, 2=电商类, 3=生活服务类
   position: number; 
   isFullScreen?: boolean; 
 }
@@ -66,7 +78,7 @@ export interface GenerationRecord {
   cost: number;
   status: 'success' | 'failed' | 'processing';
   createdAt: string;
-  siteCategory: 'medical' | 'ecommerce' | 'life';
+  siteId: SiteId; // 站点ID：1=医美类, 2=电商类, 3=生活服务类
   contentUrl?: string; 
 }
 
@@ -78,7 +90,7 @@ export interface InvitationCode {
   maxUses: number;
   status: 'active' | 'expired';
   createdAt: string;
-  siteCategory: 'medical' | 'ecommerce' | 'life'; 
+  siteId: SiteId; // 站点ID：1=医美类, 2=电商类, 3=生活服务类
   channel: string; 
   validStartDate?: string; 
   validEndDate?: string; 
@@ -86,7 +98,7 @@ export interface InvitationCode {
 
 export interface ManualConfig {
   id: string;
-  siteCategory: 'medical' | 'ecommerce' | 'life';
+  siteId: SiteId; // 站点ID：1=医美类, 2=电商类, 3=生活服务类
   title: string;
   url: string;
 }
@@ -124,10 +136,12 @@ export interface ApiPlatform {
   apiKey: string;
   isEnabled: boolean;
   description?: string; 
-  site?: 'medical' | 'ecommerce' | 'life';
+  siteId?: SiteId; // 站点ID（可选，NULL表示全局平台）：1=医美类, 2=电商类, 3=生活服务类
   nodeInfo?: string;
   interfaces: ApiInterface[];
   icon?: string;
+  supportedModels?: string; // 支持的模型列表（以#号分割的字符串，例如：flux-1.0#flux-2.0）
+  type?: string; // API类型：image_analysis, video_analysis, txt2img, img2img, txt2video, img2video, voice_clone
 }
 
 export interface MenuConfig {
@@ -146,8 +160,10 @@ export type NavSection =
   | 'menus'
   | 'api' 
   | 'payment' 
+  | 'recharge_config'
   | 'gen_records'
   | 'invitations' 
+  | 'sites'
   | 'accounts'
   | 'roles'
   | 'users';

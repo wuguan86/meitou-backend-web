@@ -3,15 +3,16 @@
  */
 import { get, put, del, post } from './index';
 import { UserAsset } from '../types';
+import { SiteId } from '../constants/sites';
 
 // 获取资产列表
 export const getAssets = async (
-  category?: string,
+  siteId?: SiteId,
   type?: string,
   search?: string
 ): Promise<UserAsset[]> => {
   const params = new URLSearchParams();
-  if (category) params.append('category', category);
+  if (siteId) params.append('siteId', siteId.toString());
   if (type) params.append('type', type);
   if (search) params.append('search', search);
   

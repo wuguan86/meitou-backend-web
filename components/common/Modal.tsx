@@ -21,15 +21,23 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }: ModalProps) =>
     full: 'max-w-[95vw] h-[90vh]' 
   };
   
+  // 处理背景点击关闭（阻止事件冒泡，确保只在点击背景时关闭）
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // 只有当点击的是背景层本身（而不是其子元素）时才关闭
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+  
   return (
     <div 
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-[2px] p-4 animate-fade-in" 
-      onClick={(e) => {
-        // 点击背景关闭弹窗
-        if (e.target === e.currentTarget) onClose();
-      }}
+      onClick={handleBackdropClick}
     >
-      <div className={`bg-white rounded-xl shadow-2xl w-full ${sizeClasses[size]} flex flex-col max-h-[90vh] overflow-hidden relative transform transition-all`}>
+      <div 
+        className={`bg-white rounded-xl shadow-2xl w-full ${sizeClasses[size]} flex flex-col max-h-[90vh] overflow-hidden relative transform transition-all`}
+        onClick={(e) => e.stopPropagation()} // 阻止内容区域的点击事件冒泡到背景层
+      >
         {/* 弹窗头部 */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
           <h3 className="text-lg font-bold text-slate-800">{title}</h3>

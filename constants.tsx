@@ -13,6 +13,8 @@ import {
   Images,
   Users as UsersIcon,
   ShieldAlert,
+  Coins,
+  Server,
 } from 'lucide-react';
 import { ApiCategory, User, UserAsset, MarketingAd, GenerationRecord, InvitationCode, MenuConfig, ManualConfig, BackendAccount } from './types';
 
@@ -31,8 +33,10 @@ export const SIDEBAR_MENU = [
       { id: 'menus', label: '菜单管理', icon: <Menu size={14} /> },
       { id: 'api', label: 'API接口管理', icon: <Key size={14} /> },
       { id: 'payment', label: '支付管理', icon: <CreditCard size={14} /> },
+      { id: 'recharge_config', label: '充值配置管理', icon: <Coins size={14} /> },
       { id: 'gen_records', label: '生成记录', icon: <FileClock size={14} /> },
       { id: 'invitations', label: '邀请码管理', icon: <Ticket size={14} /> },
+      { id: 'sites', label: '站点管理', icon: <Server size={14} /> },
       { id: 'accounts', label: '账号管理', icon: <ShieldAlert size={14} /> },
     ]
   },
@@ -74,6 +78,17 @@ export const MOCK_MANUALS: ManualConfig[] = [
   { id: 'm2', siteCategory: 'ecommerce', title: '电商工作流使用手册', url: 'https://docs.ecom.com/guide' },
   { id: 'm3', siteCategory: 'life', title: '生活服务工作流使用手册', url: 'https://docs.life.com/guide' },
 ];
+
+// API类型定义 - 按照显示顺序
+export const API_TYPES = [
+  { id: 'image_analysis', name: '图片分析', icon: 'ImageIcon', description: '图片分析接口' },
+  { id: 'video_analysis', name: '视频分析', icon: 'Video', description: '视频分析接口' },
+  { id: 'txt2img', name: '文生图', icon: 'ImageIcon', description: 'AI图像生成接口' },
+  { id: 'img2img', name: '图生图', icon: 'ImageIcon', description: 'AI图像转换接口' },
+  { id: 'txt2video', name: '文生视频', icon: 'Video', description: 'AI视频生成接口' },
+  { id: 'img2video', name: '图生视频', icon: 'Video', description: 'AI视频转换接口' },
+  { id: 'voice_clone', name: '声音克隆', icon: 'Music', description: 'AI声音克隆接口' },
+] as const;
 
 export const MOCK_API_CATEGORIES: ApiCategory[] = [ 
   { 

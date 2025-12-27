@@ -3,7 +3,9 @@
  * 提供统一的 HTTP 请求封装
  */
 
-const API_BASE_URL = 'http://localhost:8080/api';
+// 开发环境：使用相对路径，通过Vite代理转发
+// 生产环境：根据实际部署情况配置
+const API_BASE_URL = '/api';
 
 // 请求拦截器：添加 Token
 const getHeaders = (): HeadersInit => {
@@ -25,30 +27,48 @@ const request = async <T>(
   url: string,
   options: RequestInit = {}
 ): Promise<T> => {
-  const response = await fetch(`${API_BASE_URL}${url}`, {
-    ...options,
-    headers: {
-      ...getHeaders(),
-      ...options.headers,
-    },
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      ...options,
+      headers: {
+        ...getHeaders(),
+        ...options.headers,
+      },
+    });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || '请求失败');
-  }
-
-  // 如果响应格式是 Result<T>
-  if (data.code !== undefined) {
-    if (data.code === 200) {
-      return data.data;
-    } else {
-      throw new Error(data.message || '请求失败');
+    // 检查响应状态
+    if (!response.ok) {
+      // 尝试解析错误信息
+      let errorMessage = '请求失败';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || `HTTP ${response.status}: ${response.statusText}`;
+      } catch {
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
-  }
 
-  return data;
+    const data = await response.json();
+
+    // 如果响应格式是 Result<T>
+    if (data.code !== undefined) {
+      if (data.code === 200) {
+        return data.data;
+      } else {
+        throw new Error(data.message || '请求失败');
+      }
+    }
+
+    return data;
+  } catch (error) {
+    // 处理网络错误（如连接失败、跨域问题等）
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('无法连接到服务器，请检查后端服务是否运行在 http://localhost:8080');
+    }
+    // 重新抛出其他错误
+    throw error;
+  }
 };
 
 // GET 请求

@@ -1,17 +1,18 @@
 import React from 'react';
+import { SITES, SITE_NAMES, SiteId } from '../../constants/sites';
 
-// CategoryTabs 组件 - 分类标签页组件
+// CategoryTabs 组件 - 站点标签页组件（使用 siteId）
 interface CategoryTabsProps {
-  selected: string; // 当前选中的分类
-  onSelect: (c: string) => void; // 选择回调
+  selected: SiteId; // 当前选中的站点ID
+  onSelect: (siteId: SiteId) => void; // 选择回调
 }
 
 const CategoryTabs = ({ selected, onSelect }: CategoryTabsProps) => {
-  // 分类选项
-  const tabs = [
-    { id: 'medical', label: '医美类' },
-    { id: 'ecommerce', label: '电商类' },
-    { id: 'life', label: '生活服务类' }
+  // 站点选项（使用 siteId）
+  const tabs: { id: SiteId; label: string }[] = [
+    { id: SITES.MEDICAL, label: SITE_NAMES[SITES.MEDICAL] },
+    { id: SITES.ECOMMERCE, label: SITE_NAMES[SITES.ECOMMERCE] },
+    { id: SITES.LIFE, label: SITE_NAMES[SITES.LIFE] }
   ];
   
   return (
@@ -19,7 +20,7 @@ const CategoryTabs = ({ selected, onSelect }: CategoryTabsProps) => {
       {tabs.map(tab => (
         <button 
           key={tab.id} 
-          onClick={() => onSelect(tab.id)} // 点击切换分类
+          onClick={() => onSelect(tab.id)} // 点击切换站点
           className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
             selected === tab.id 
               ? 'bg-blue-50 text-blue-600 shadow-sm' 

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { User } from '../types';
 import * as userAPI from '../api/user';
+import { SiteId } from '../constants/sites';
 
 // useUsers Hook - 管理用户列表数据
-export const useUsers = (activeCategory: string, search: string) => {
+export const useUsers = (activeSiteId: SiteId, search: string) => {
   const [users, setUsers] = useState<User[]>([]); // 用户列表
   const [loading, setLoading] = useState(false); // 加载状态
   
@@ -11,7 +12,7 @@ export const useUsers = (activeCategory: string, search: string) => {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const data = await userAPI.getUsers(activeCategory, search || undefined);
+      const data = await userAPI.getUsers(activeSiteId, search || undefined);
       setUsers(data);
     } catch (err: any) {
       alert('加载用户列表失败: ' + (err.message || '未知错误'));
@@ -20,15 +21,14 @@ export const useUsers = (activeCategory: string, search: string) => {
     }
   };
   
-  // 当分类或搜索条件变化时重新加载
+  // 当站点ID或搜索条件变化时重新加载
   useEffect(() => {
     loadUsers();
-  }, [activeCategory, search]);
+  }, [activeSiteId, search]);
   
-  // 过滤用户列表
+  // 前端过滤（后端已经根据siteId过滤，这里只做搜索过滤）
   const filteredUsers = users.filter(u => 
-    u.category === activeCategory && 
-    (search === '' || u.username?.includes(search) || u.email?.includes(search) || u.phone?.includes(search))
+    search === '' || u.username?.includes(search) || u.email?.includes(search) || u.phone?.includes(search)
   );
   
   return {

@@ -24,7 +24,10 @@ const Login = ({ onLogin }: LoginProps) => {
       await authAPI.login({ account, password });
       onLogin(); // 登录成功回调
     } catch (err: any) {
-      setError(err.message || '登录失败，请检查账号密码');
+      // 显示更详细的错误信息
+      const errorMsg = err.message || '登录失败，请检查账号密码';
+      setError(errorMsg);
+      console.error('登录错误:', err);
     } finally {
       setLoading(false);
     }
