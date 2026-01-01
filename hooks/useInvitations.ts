@@ -14,7 +14,7 @@ export const useInvitations = (activeCategory: string) => {
       const data = await invitationAPI.getInvitations(activeCategory);
       setCodes(data);
     } catch (err: any) {
-      alert('加载邀请码失败: ' + (err.message || '未知错误'));
+      console.error('加载邀请码失败:', err);
     } finally {
       setLoading(false);
     }

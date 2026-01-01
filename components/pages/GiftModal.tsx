@@ -17,7 +17,7 @@ const GiftModal = ({ user, onClose, onConfirm }: GiftModalProps) => {
   if (!user) return null; // 没有用户数据时不显示
   
   return (
-    <Modal isOpen={true} onClose={onClose} title={`赠送积分 - ${user.username}`}>
+    <Modal isOpen={true} onClose={onClose} title={`赠送积分 - ${user.username}`} maskClosable={false}>
       <div className="space-y-4">
         {/* 积分数量输入 */}
         <FormItem label="赠送积分数量">

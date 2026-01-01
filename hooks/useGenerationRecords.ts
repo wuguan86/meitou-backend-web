@@ -14,7 +14,7 @@ export const useGenerationRecords = () => {
       const data = await generationAPI.getGenerationRecords();
       setRecords(data);
     } catch (err: any) {
-      alert('加载记录失败: ' + (err.message || '未知错误'));
+      console.error('加载记录失败:', err);
     } finally {
       setLoading(false);
     }

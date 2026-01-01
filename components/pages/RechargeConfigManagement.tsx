@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
+import { message, Modal as AntModal } from 'antd';
 import { getRechargeConfigs, createRechargeConfig, updateRechargeConfig, deleteRechargeConfig, RechargeConfig, RechargeOption } from '../../api/rechargeConfig';
 import Modal from '../common/Modal';
 import FormItem from '../common/FormItem';
@@ -22,7 +23,7 @@ const RechargeConfigManagement: React.FC = () => {
       const data = await getRechargeConfigs(siteId);
       setConfigs(data);
     } catch (err: any) {
-      alert('加载配置失败: ' + (err.message || '未知错误'));
+      console.error('加载配置失败:', err);
       setConfigs([]);
     } finally {
       setLoading(false);
@@ -89,11 +90,11 @@ const RechargeConfigManagement: React.FC = () => {
     try {
       // 验证必填字段
       if (!formData.exchangeRate || formData.exchangeRate <= 0) {
-        alert('兑换比例必须大于0');
+        message.warning('兑换比例必须大于0');
         return;
       }
       if (!formData.minAmount || formData.minAmount <= 0) {
-        alert('最低充值金额必须大于0');
+        message.warning('最低充值金额必须大于0');
         return;
       }
 
@@ -101,21 +102,21 @@ const RechargeConfigManagement: React.FC = () => {
       try {
         const options = parseOptions(formData.optionsJson || '[]');
         if (options.length === 0) {
-          alert('至少需要配置一个充值选项');
+          message.warning('至少需要配置一个充值选项');
           return;
         }
         for (const opt of options) {
           if (!opt.points || opt.points <= 0) {
-            alert('算力点数必须大于0');
+            message.warning('算力点数必须大于0');
             return;
           }
           if (!opt.price || opt.price <= 0) {
-            alert('价格必须大于0');
+            message.warning('价格必须大于0');
             return;
           }
         }
       } catch (e) {
-        alert('充值选项JSON格式错误');
+        message.error('充值选项JSON格式错误');
         return;
       }
 
@@ -128,32 +129,36 @@ const RechargeConfigManagement: React.FC = () => {
       if (editModal.config) {
         // 更新
         await updateRechargeConfig(editModal.config.id, finalFormData);
-        alert('更新成功');
+        message.success('更新成功');
       } else {
         // 创建
         await createRechargeConfig(finalFormData);
-        alert('创建成功');
+        message.success('创建成功');
       }
 
       await loadConfigs(activeSiteId);
       setEditModal({ isOpen: false, config: null });
     } catch (err: any) {
-      alert('保存失败: ' + (err.message || '未知错误'));
+      message.error('保存失败: ' + (err.message || '未知错误'));
     }
   };
 
   // 删除配置
   const handleDelete = async (id: string) => {
-    if (!window.confirm('确认删除该配置吗？删除后无法恢复！')) {
-      return;
-    }
-    try {
-      await deleteRechargeConfig(id, activeSiteId);
-      alert('删除成功');
-      await loadConfigs(activeSiteId);
-    } catch (err: any) {
-      alert('删除失败: ' + (err.message || '未知错误'));
-    }
+    AntModal.confirm({
+      title: '确认删除',
+      content: '确认删除该配置吗？删除后无法恢复！',
+      onOk: async () => {
+        try {
+          await deleteRechargeConfig(id, activeSiteId);
+          message.success('删除成功');
+          await loadConfigs(activeSiteId);
+        } catch (err: any) {
+          console.error('删除失败:', err);
+          message.error('删除失败: ' + (err.message || '未知错误'));
+        }
+      }
+    });
   };
 
   // 切换启用状态
@@ -165,7 +170,7 @@ const RechargeConfigManagement: React.FC = () => {
       });
       await loadConfigs(activeSiteId);
     } catch (err: any) {
-      alert('更新失败: ' + (err.message || '未知错误'));
+      console.error('更新失败:', err);
     }
   };
 
@@ -274,6 +279,7 @@ const RechargeConfigManagement: React.FC = () => {
           onClose={() => setEditModal({ isOpen: false, config: null })}
           title={editModal.config ? '编辑充值配置' : '创建充值配置'}
           size="lg"
+          maskClosable={false}
         >
           <div className="space-y-4">
             <FormItem label="站点">

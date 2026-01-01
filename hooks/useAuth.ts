@@ -7,7 +7,9 @@ export const useAuth = () => {
   // 检查登录状态
   useEffect(() => {
     // 从本地存储检查登录状态
-    setIsLoggedIn(!!localStorage.getItem('vidu_admin_session'));
+    const hasSession = !!localStorage.getItem('vidu_admin_session');
+    const hasToken = !!localStorage.getItem('admin_token');
+    setIsLoggedIn(hasSession && hasToken);
     // 设置页面标题
     document.title = "Meitou Admin | V2.6.4";
   }, []);

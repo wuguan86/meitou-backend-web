@@ -14,7 +14,7 @@ export const useAccounts = () => {
       const data = await accountAPI.getAccounts();
       setAccounts(data);
     } catch (err: any) {
-      alert('加载账号列表失败: ' + (err.message || '未知错误'));
+      console.error('加载账号失败:', err);
     } finally {
       setLoading(false);
     }

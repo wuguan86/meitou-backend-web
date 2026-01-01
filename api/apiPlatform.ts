@@ -61,8 +61,8 @@ export const getPlatforms = async (siteId?: number): Promise<ApiPlatformResponse
 };
 
 // 获取平台详情
-export const getPlatform = async (id: number): Promise<ApiPlatformResponse> => {
-  return await get<ApiPlatformResponse>(`/admin/api-platforms/${id}`);
+export const getPlatform = async (id: number, siteId: number): Promise<ApiPlatformResponse> => {
+  return await get<ApiPlatformResponse>(`/admin/api-platforms/${id}?siteId=${siteId}`);
 };
 
 // 创建平台
@@ -71,8 +71,8 @@ export const createPlatform = async (request: ApiPlatformRequest): Promise<ApiPl
 };
 
 // 更新平台
-export const updatePlatform = async (id: number, request: ApiPlatformRequest): Promise<ApiPlatformResponse> => {
-  return await put<ApiPlatformResponse>(`/admin/api-platforms/${id}`, request);
+export const updatePlatform = async (id: number, request: ApiPlatformRequest, siteId: number): Promise<ApiPlatformResponse> => {
+  return await put<ApiPlatformResponse>(`/admin/api-platforms/${id}?siteId=${siteId}`, request);
 };
 
 // 删除平台

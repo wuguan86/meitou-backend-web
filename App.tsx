@@ -29,7 +29,6 @@ import {
   AlignRight,
   Code,
   Link as LinkIcon,
-  BookOpen,
   ShieldAlert,
   Play,
   Music,
@@ -40,11 +39,15 @@ import {
   Download,
   Headphones,
   Copy,
-  Save
+  Save,
+  RefreshCw
 } from 'lucide-react';
-import { SIDEBAR_MENU, MOCK_ADS, MOCK_API_CATEGORIES, STANDARD_MENUS, MOCK_MANUALS, MOCK_ASSETS, API_TYPES } from './constants';
-import { User as UserType, UserAsset, MarketingAd, NavSection, GenerationRecord, InvitationCode, MenuConfig, ManualConfig, BackendAccount, ApiPlatform, ApiInterface, ApiCategory, Site } from './types';
+import { SIDEBAR_MENU, MOCK_ADS, MOCK_API_CATEGORIES, STANDARD_MENUS, MOCK_ASSETS, API_TYPES } from './constants';
+import { User as UserType, UserAsset, MarketingAd, NavSection, GenerationRecord, InvitationCode, MenuConfig, BackendAccount, ApiPlatform, ApiInterface, ApiCategory, Site } from './types';
 import { SITES, SiteId } from './constants/sites';
+import { message, Modal as AntModal, Pagination } from 'antd';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 // API 服务
 import * as authAPI from './api/auth';
 import * as assetAPI from './api/asset';
@@ -55,8 +58,10 @@ import * as accountAPI from './api/account';
 import * as siteAPI from './api/site';
 import * as uploadAPI from './api/upload';
 import * as marketingAPI from './api/marketing';
+import * as customerServiceAPI from './api/customerService';
 import * as apiPlatformAPI from './api/apiPlatform';
 import * as menuAPI from './api/menu';
+import { squareAPI, PublishedContent } from './api/square';
 
 // 导入已提取的通用组件
 import Modal from './components/common/Modal';
@@ -68,6 +73,7 @@ import FormItem from './components/common/FormItem';
 // 导入已提取的页面组件
 import Dashboard from './components/pages/Dashboard';
 import UserManagement from './components/pages/UserManagement';
+import AssetsManagement from './components/pages/AssetsManagement';
 import RechargeConfigManagement from './components/pages/RechargeConfigManagement';
 
 // 导入已提取的布局组件
@@ -87,78 +93,123 @@ import { useAccounts } from './hooks/useAccounts';
 const SquareManagement = () => {
   const [activeSiteId, setActiveSiteId] = useState<SiteId>(SITES.MEDICAL); // 默认医美类（siteId=1）
   const [activeTab, setActiveTab] = useState<'all' | 'image' | 'video'>('all');
-  const [assets, setAssets] = useState<UserAsset[]>([]);
+  const [contents, setContents] = useState<PublishedContent[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [editingLike, setEditingLike] = useState<{id: string, count: number} | null>(null);
-
-  const loadAssets = async () => {
+  const [editingLikeId, setEditingLikeId] = useState<string | null>(null);
+  const [editLikeValue, setEditLikeValue] = useState<string>('');
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
+  const [previewItem, setPreviewItem] = useState<PublishedContent | null>(null);
+  
+  const loadContents = async (page = 1, size = 10) => {
     setLoading(true);
     try {
-      const data = await assetAPI.getAssets(activeSiteId, activeTab === 'all' ? undefined : activeTab, search || undefined);
-      setAssets(data);
+      const result = await squareAPI.getList(page, size, activeSiteId, activeTab === 'all' ? undefined : activeTab, search || undefined);
+      setContents(result.records);
+      setPagination({
+        current: result.current,
+        pageSize: result.size,
+        total: result.total
+      });
     } catch (err: any) {
-      alert('加载内容失败: ' + (err.message || '未知错误'));
+      console.error('加载内容失败:', err);
     } finally {
       setLoading(false);
     }
   };
   
   useEffect(() => {
-    loadAssets();
-  }, [activeSiteId, activeTab, search]);
+    loadContents(1, pagination.pageSize);
+  }, [activeSiteId, activeTab]);
   
-  const filteredAssets = assets;
+  const handlePageChange = (page: number, pageSize: number) => {
+    loadContents(page, pageSize);
+  };
   
   const togglePin = async (id:string) => {
     try {
-      await assetAPI.togglePin(id);
-      await loadAssets();
+      await squareAPI.togglePin(id, activeSiteId);
+      await loadContents(pagination.current, pagination.pageSize);
     } catch (err: any) {
-      alert('操作失败: ' + (err.message || '未知错误'));
+      message.error('操作失败: ' + (err.message || '未知错误'));
     }
   };
+
   const toggleStatus = async (id:string) => {
     try {
-      const asset = assets.find(a => a.id === id);
-      if (!asset) return;
-      const newStatus = asset.status === 'published' ? 'hidden' : 'published';
-      await assetAPI.updateAssetStatus(id, newStatus);
-      await loadAssets();
+      await squareAPI.toggleStatus(id, activeSiteId);
+      await loadContents(pagination.current, pagination.pageSize);
     } catch (err: any) {
-      alert('操作失败: ' + (err.message || '未知错误'));
+      message.error('操作失败: ' + (err.message || '未知错误'));
     }
   };
+
   const handleDelete = async (id:string) => { 
-    if(window.confirm("确认要删除此内容吗？\n一旦删除无法找回！")) {
-      try {
-        await assetAPI.deleteAsset(id);
-        await loadAssets();
-      } catch (err: any) {
-        alert('删除失败: ' + (err.message || '未知错误'));
+    AntModal.confirm({
+      title: '确认删除',
+      content: '确认要删除此内容吗？\n一旦删除无法找回！',
+      onOk: async () => {
+        try {
+          await squareAPI.deleteContent(id, activeSiteId);
+          await loadContents(pagination.current, pagination.pageSize);
+          message.success('删除成功');
+        } catch (err: any) {
+          message.error('删除失败: ' + (err.message || '未知错误'));
+        }
       }
-    }
+    });
   };
-  
-  const saveLikeCount = async () => {
-      if(editingLike) {
-          try {
-            await assetAPI.updateLikeCount(editingLike.id, editingLike.count);
-            await loadAssets();
-          } catch (err: any) {
-            alert('更新失败: ' + (err.message || '未知错误'));
-          }
-          setEditingLike(null);
-      }
+
+  const handleDownload = (item: PublishedContent) => {
+    const link = document.createElement('a');
+    link.href = item.contentUrl;
+    link.download = item.title || 'download';
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const startEditLike = (item: PublishedContent) => {
+    setEditingLikeId(item.id);
+    setEditLikeValue(item.likeCount?.toString() || '0');
+  };
+
+  const saveLike = async () => {
+    if (!editingLikeId) return;
+    try {
+      const count = parseInt(editLikeValue) || 0;
+      await squareAPI.updateLikeCount(editingLikeId, count, activeSiteId);
+      setContents(prev => prev.map(item => item.id === editingLikeId ? { ...item, likeCount: count } : item));
+      setEditingLikeId(null);
+      message.success('更新点赞数成功');
+    } catch (err: any) {
+      message.error('更新失败: ' + (err.message || '未知错误'));
+    }
   };
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 card-shadow flex flex-col h-[calc(100vh-140px)] animate-fade-in">
       <div className="p-6 border-b flex justify-between items-center">
           <h3 className="text-xl font-bold text-slate-800">广场管理</h3>
-          <div className="relative w-64">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input type="text" placeholder="搜索作品名或作者名..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm bg-slate-50" />
+          <div className="flex gap-2">
+            <div className="relative w-64">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input 
+                  type="text" 
+                  placeholder="搜索作品名或作者名..." 
+                  value={search} 
+                  onChange={e => setSearch(e.target.value)} 
+                  onKeyDown={e => e.key === 'Enter' && loadContents(1, pagination.pageSize)}
+                  className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm bg-slate-50" 
+                />
+            </div>
+            <button 
+              onClick={() => loadContents(1, pagination.pageSize)}
+              className="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors"
+            >
+              查询
+            </button>
           </div>
       </div>
       <div className="p-4 bg-slate-50/50 border-b flex flex-col sm:flex-row gap-4 justify-between">
@@ -171,156 +222,112 @@ const SquareManagement = () => {
               ))}
           </div>
       </div>
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-6 flex flex-col">
         {loading ? (
           <div className="flex items-center justify-center h-64 text-slate-400">加载中...</div>
-        ) : filteredAssets.length === 0 ? (
+        ) : contents.length === 0 ? (
           <div className="flex items-center justify-center h-64 text-slate-400">暂无数据</div>
         ) : (
-          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
-            {filteredAssets.map(asset => (
-            <div key={asset.id} className="break-inside-avoid group relative border rounded-xl shadow-sm hover:shadow-lg transition-all bg-white overflow-hidden mb-6">
-                {asset.isPinned && <div className="absolute top-2 left-2 bg-yellow-400 text-white p-1 rounded-md shadow-sm z-10"><Pin size={12} fill="currentColor"/></div>}
-                <div className="bg-slate-100 relative">
-                    <img src={asset.thumbnail || asset.url} className="w-full h-auto object-cover block" />
-                    {asset.type === 'video' && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Play className="text-white drop-shadow-md" fill="currentColor"/></div>}
-                    {asset.type === 'audio' && <div className="absolute inset-0 flex items-center justify-center bg-slate-800/80"><Music className="text-white"/></div>}
+          <>
+          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6 mb-6">
+            {contents.map(item => (
+            <div key={item.id} className="break-inside-avoid group relative border rounded-xl shadow-sm hover:shadow-lg transition-all bg-white overflow-hidden mb-6">
+                {item.isPinned && <div className="absolute top-2 left-2 bg-yellow-400 text-white p-1 rounded-md shadow-sm z-10"><Pin size={12} fill="currentColor"/></div>}
+                <div className="bg-slate-100 relative cursor-pointer" onClick={() => setPreviewItem(item)}>
+                    <img src={item.thumbnail || item.contentUrl} className="w-full h-auto object-cover block" />
+                    {item.type === 'video' && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Play className="text-white drop-shadow-md" fill="currentColor"/></div>}
                 </div>
                 <div className="p-3">
                     <div className="flex justify-between items-start mb-2">
-                        <p className="font-bold text-sm truncate flex-1 mr-2">{asset.title}</p>
-                        <StatusBadge status={asset.status}/>
+                        <p className="font-bold text-sm truncate flex-1 mr-2">{item.title}</p>
+                        <StatusBadge status={item.status}/>
                     </div>
                     
                     <div className="flex items-center justify-between text-xs text-slate-500 border-t pt-2 mt-2">
                         <div className="flex items-center gap-2">
-                             <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-[10px]">{asset.userName.substring(0,1).toUpperCase()}</div>
-                             <span className="truncate max-w-[80px]">{asset.userName}</span>
+                             <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-[10px]">{item.userName?.substring(0,1).toUpperCase() || 'U'}</div>
+                             <span className="truncate max-w-[80px]">{item.userName || 'Unknown'}</span>
                         </div>
-                        <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-full cursor-pointer hover:bg-slate-100" onClick={() => setEditingLike({id: asset.id, count: asset.likeCount || 0})}>
-                             <Heart size={12} className="text-red-500" fill="#ef4444" />
-                             <span className="font-medium text-slate-600">{asset.likeCount || 0}</span>
-                             <Pencil size={10} className="text-slate-400 ml-1 opacity-0 group-hover:opacity-100" />
-                        </div>
+                        {editingLikeId === item.id ? (
+                          <div className="flex items-center gap-1 bg-slate-50 px-1 py-0.5 rounded-full border border-blue-200">
+                             <input 
+                               type="number" 
+                               className="w-12 h-5 text-xs bg-transparent outline-none text-center"
+                               value={editLikeValue}
+                               onChange={(e) => setEditLikeValue(e.target.value)}
+                               onKeyDown={(e) => {
+                                 if (e.key === 'Enter') saveLike();
+                                 if (e.key === 'Escape') setEditingLikeId(null);
+                               }}
+                               autoFocus
+                               onBlur={saveLike}
+                             />
+                          </div>
+                        ) : (
+                          <div 
+                            className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-full cursor-pointer hover:bg-slate-100 transition-colors group/like"
+                            onClick={() => startEditLike(item)}
+                            title="点击修改点赞数"
+                          >
+                               <Heart size={12} className="text-red-500" fill="#ef4444" />
+                               <span className="font-medium text-slate-600 group-hover/like:text-blue-600 transition-colors">{item.likeCount || 0}</span>
+                          </div>
+                        )}
                     </div>
                 </div>
                 
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 z-20">
-                    <button onClick={() => togglePin(asset.id)} className="p-3 bg-white/20 backdrop-blur rounded-full text-white hover:bg-white/30" title="置顶"><Pin size={18} className={asset.isPinned ? "fill-current" : ""} /></button>
-                    <button onClick={() => toggleStatus(asset.id)} className="p-3 bg-white/20 backdrop-blur rounded-full text-white hover:bg-white/30" title={asset.status === 'published' ? '下架' : '上架'}>{asset.status === 'published' ? <EyeOff size={18}/> : <Eye size={18}/>}</button>
-                    <button onClick={() => handleDelete(asset.id)} className="p-3 bg-red-500/80 backdrop-blur rounded-full text-white hover:bg-red-500" title="删除"><Trash2 size={18} /></button>
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 z-20 pointer-events-none">
+                    <div className="flex gap-2 pointer-events-auto">
+                        <button onClick={() => togglePin(item.id)} className="p-3 bg-white/20 backdrop-blur rounded-full text-white hover:bg-white/30" title="置顶"><Pin size={18} className={item.isPinned ? "fill-current" : ""} /></button>
+                        <button onClick={() => toggleStatus(item.id)} className="p-3 bg-white/20 backdrop-blur rounded-full text-white hover:bg-white/30" title={item.status === 'published' ? '下架' : '上架'}>{item.status === 'published' ? <EyeOff size={18}/> : <Eye size={18}/>}</button>
+                        <button onClick={() => handleDownload(item)} className="p-3 bg-white/20 backdrop-blur rounded-full text-white hover:bg-white/30" title="下载"><Download size={18} /></button>
+                        <button onClick={() => handleDelete(item.id)} className="p-3 bg-red-500/80 backdrop-blur rounded-full text-white hover:bg-red-500" title="删除"><Trash2 size={18} /></button>
+                    </div>
                 </div>
             </div>
             ))}
           </div>
+          </>
         )}
       </div>
       
-      {editingLike && (
-          <Modal isOpen={true} onClose={() => setEditingLike(null)} title="修改点赞数" size="md">
-              <div className="space-y-4">
-                  <FormItem label="当前点赞数">
-                      <input type="number" value={editingLike.count} onChange={e => setEditingLike({...editingLike, count: parseInt(e.target.value)})} className="w-full p-2 border rounded" />
-                  </FormItem>
-                  <div className="flex justify-end gap-2">
-                      <button onClick={() => setEditingLike(null)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded">取消</button>
-                      <button onClick={saveLikeCount} className="px-4 py-2 bg-blue-600 text-white rounded">保存</button>
-                  </div>
-              </div>
-          </Modal>
-      )}
+      <AntModal
+        open={!!previewItem}
+        footer={null}
+        onCancel={() => setPreviewItem(null)}
+        width={800}
+        centered
+        className="p-0 bg-transparent"
+        styles={{ content: { padding: 0, background: 'transparent', boxShadow: 'none' } }}
+      >
+         {previewItem && (
+             <div className="relative bg-black rounded-lg overflow-hidden flex justify-center items-center max-h-[80vh]">
+                 {previewItem.type === 'video' ? (
+                     <video src={previewItem.contentUrl} controls className="max-w-full max-h-[80vh]" autoPlay />
+                 ) : (
+                     <img src={previewItem.contentUrl} className="max-w-full max-h-[80vh] object-contain" />
+                 )}
+                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 text-white">
+                    <h3 className="font-bold text-lg">{previewItem.title}</h3>
+                    {previewItem.description && <p className="text-sm opacity-80 mt-1">{previewItem.description}</p>}
+                 </div>
+             </div>
+         )}
+      </AntModal>
     </div>
   );
 };
 
-const AssetsManagement = () => {
-  const [activeSiteId, setActiveSiteId] = useState<SiteId>(SITES.MEDICAL); // 默认医美类（siteId=1）
-  const [activeType, setActiveType] = useState('all');
-  const [assets, setAssets] = useState<UserAsset[]>(MOCK_ASSETS);
-  const [editAsset, setEditAsset] = useState<UserAsset|null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  const filteredAssets = assets.filter(a => {
-      const catMatch = a.siteId === activeSiteId;
-      const typeMatch = activeType === 'all' || a.type === activeType;
-      const userMatch = searchQuery ? a.userName.includes(searchQuery) : true;
-      return catMatch && typeMatch && userMatch;
-  });
 
-  const handleDelete = (id: string) => { if(window.confirm('确认删除该资产吗？\n一旦删除无法找回！')) setAssets(assets.filter(a => a.id !== id)); };
-
-  return (
-    <div className="bg-white rounded-xl border card-shadow h-[calc(100vh-140px)] flex flex-col animate-fade-in">
-      <div className="p-6 border-b"><h3 className="text-xl font-bold text-slate-800">资产管理</h3></div>
-      <div className="p-4 bg-slate-50/50 border-b flex flex-col sm:flex-row gap-4 justify-between items-center">
-          <CategoryTabs selected={activeSiteId} onSelect={setActiveSiteId} />
-          
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-48">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input 
-                    type="text" 
-                    placeholder="搜索用户名..." 
-                    className="w-full pl-9 pr-3 py-1.5 text-sm border rounded-lg"
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                />
-            </div>
-            <div className="flex bg-white rounded-lg p-1 border shrink-0">
-                {['all', 'image', 'video', 'audio'].map(t => (
-                    <button key={t} onClick={() => setActiveType(t)} className={`px-4 py-1.5 text-xs font-medium rounded capitalize ${activeType === t ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-900'}`}>
-                        {t === 'all' ? '全部' : t === 'image' ? '图片' : t === 'video' ? '视频' : '音频'}
-                    </button>
-                ))}
-            </div>
-          </div>
-      </div>
-      <div className="flex-1 overflow-auto p-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-            {filteredAssets.map(asset => (
-            <div key={asset.id} className="border rounded-xl group overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
-                <div className="aspect-square bg-slate-100 relative">
-                    <img src={asset.thumbnail || asset.url} className="w-full h-full object-cover" />
-                    <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-black/50 rounded text-[10px] text-white uppercase">{asset.type}</div>
-                </div>
-                <div className="p-3">
-                <p className="font-bold text-sm truncate" title={asset.title}>{asset.title}</p>
-                <p className="text-xs text-slate-400 mt-1 truncate">@{asset.userName}</p>
-                <div className="flex justify-between mt-3 pt-2 border-t border-slate-100">
-                    <button onClick={() => setEditAsset(asset)} className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1"><Edit size={12}/> 修改</button>
-                    <button onClick={() => handleDelete(asset.id)} className="text-xs font-medium text-red-500 hover:text-red-700 flex items-center gap-1"><Trash2 size={12}/> 删除</button>
-                </div>
-                </div>
-            </div>
-            ))}
-        </div>
-      </div>
-      {editAsset && <Modal isOpen={true} onClose={() => setEditAsset(null)} title="修改资产">
-          <div className="space-y-4">
-              <FormItem label="资产标题"><input defaultValue={editAsset.title} className="w-full p-2 border rounded" /></FormItem>
-              <FormItem label="站点 (不可修改)">
-                  <select disabled defaultValue={editAsset.siteId} className="w-full p-2 border rounded bg-slate-100 text-slate-500 cursor-not-allowed">
-                      <option value="medical">医美类</option>
-                      <option value="ecommerce">电商类</option>
-                      <option value="life">生活服务类</option>
-                  </select>
-              </FormItem>
-              <button className="mt-4 w-full p-2 bg-blue-600 text-white rounded font-bold" onClick={() => setEditAsset(null)}>保存修改</button>
-          </div>
-      </Modal>}
-    </div>
-  );
-};
 
 const MarketingManagement = () => {
   const [activeSiteId, setActiveSiteId] = useState<SiteId>(SITES.MEDICAL); // 默认医美类（siteId=1）
   const [ads, setAds] = useState<MarketingAd[]>(MOCK_ADS);
-  const [manualModal, setManualModal] = useState(false);
   const [csModal, setCsModal] = useState(false);
-  const [manuals, setManuals] = useState<ManualConfig[]>(MOCK_MANUALS);
   const [editAd, setEditAd] = useState<Partial<MarketingAd> | null>(null);
-  const [csConfig, setCsConfig] = useState({ image: '', text: '' });
+  const [csConfig, setCsConfig] = useState<customerServiceAPI.CustomerServiceConfig>({ siteId: activeSiteId, qrCodeUrl: '', contactText: '' });
   const [csUploading, setCsUploading] = useState(false); // 客服图片上传状态
+  const [csSaving, setCsSaving] = useState(false);
 
   // 加载广告列表
   const loadAds = async () => {
@@ -334,22 +341,47 @@ const MarketingManagement = () => {
     }
   };
 
-  // 当站点ID改变时重新加载广告
+  // 加载客服配置
+  const loadCsConfig = async () => {
+    try {
+      const config = await customerServiceAPI.getConfig(activeSiteId);
+      if (config) {
+        setCsConfig(config);
+      } else {
+        setCsConfig({ siteId: activeSiteId, qrCodeUrl: '', contactText: '' });
+      }
+    } catch (error) {
+      console.error('加载客服配置失败:', error);
+      setCsConfig({ siteId: activeSiteId, qrCodeUrl: '', contactText: '' });
+    }
+  };
+
+  // 保存客服配置
+  const saveCsConfig = async () => {
+    if (!csConfig.qrCodeUrl) {
+      message.warning('请上传客服二维码图片');
+      return;
+    }
+    setCsSaving(true);
+    try {
+      await customerServiceAPI.saveConfig(activeSiteId, csConfig);
+      message.success('客服配置保存成功');
+      setCsModal(false);
+    } catch (error) {
+      console.error('保存客服配置失败:', error);
+      message.error('保存失败');
+    } finally {
+      setCsSaving(false);
+    }
+  };
+
+  // 当站点ID改变时重新加载广告和配置
   useEffect(() => {
     loadAds();
+    loadCsConfig();
   }, [activeSiteId]);
 
   const filteredAds = ads.filter(ad => ad.siteId === activeSiteId);
-
-  // Helper to get manual URL for a site
-  const getUrl = (siteId: SiteId) => manuals.find(m => m.siteId === siteId)?.url || '';
-  const updateUrl = (siteId: SiteId, val: string) => {
-    setManuals(prev => {
-       const existing = prev.find(p => p.siteId === siteId);
-       if(existing) return prev.map(p => p.siteId === siteId ? {...p, url: val} : p);
-       return [...prev, { id: Date.now().toString(), siteId: siteId, title: '', url: val }];
-    });
-  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -357,7 +389,6 @@ const MarketingManagement = () => {
         <h2 className="text-xl font-bold text-slate-800">营销管理</h2>
         <div className="flex gap-4">
           <button onClick={() => setCsModal(true)} className="px-4 py-2 border rounded-lg text-sm font-medium flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700"><Headphones size={16}/> 客服配置</button>
-          <button onClick={() => setManualModal(true)} className="px-4 py-2 border rounded-lg text-sm font-medium flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700"><BookOpen size={16}/> 手册配置</button>
           <button onClick={() => setEditAd({ siteId: activeSiteId, position: 1 })} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-blue-700 shadow-sm"><Plus size={16}/> 新增广告</button>
         </div>
       </div>
@@ -386,25 +417,13 @@ const MarketingManagement = () => {
           </div>
       </div>
 
-       <Modal isOpen={manualModal} onClose={() => setManualModal(false)} title="站点使用手册配置">
-        <div className="space-y-4">
-          {[SITES.MEDICAL, SITES.ECOMMERCE, SITES.LIFE].map(siteId => (
-            <div key={siteId} className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">{siteId === SITES.MEDICAL ? '医美类' : siteId === SITES.ECOMMERCE ? '电商类' : '生活类'} 手册链接</label>
-              <input className="w-full p-2 border rounded" value={getUrl(siteId)} onChange={e => updateUrl(siteId, e.target.value)} placeholder={`请输入${siteId === SITES.MEDICAL ? '医美类' : siteId === SITES.ECOMMERCE ? '电商类' : '生活类'}站点手册URL...`} />
-            </div>
-          ))}
-          <button className="w-full py-2 bg-blue-600 text-white rounded-lg mt-2 font-medium">保存配置</button>
-        </div>
-      </Modal>
-
-      <Modal isOpen={csModal} onClose={() => setCsModal(false)} title="客服信息配置">
+      <Modal isOpen={csModal} onClose={() => setCsModal(false)} title="客服信息配置" maskClosable={false}>
           <div className="space-y-5">
               <FormItem label="客服二维码图片">
                   <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:bg-slate-50 cursor-pointer flex flex-col items-center justify-center text-slate-400 relative overflow-hidden group h-48">
-                      {csConfig.image ? (
+                      {csConfig.qrCodeUrl ? (
                           <>
-                            <img src={csConfig.image} className="h-full object-contain" />
+                            <img src={csConfig.qrCodeUrl} className="h-full object-contain" />
                             <p className="text-xs text-blue-600 mt-2">
                               {csUploading ? '上传中...' : '点击重新上传'}
                             </p>
@@ -425,19 +444,19 @@ const MarketingManagement = () => {
                           if (file) {
                             // 检查文件大小（5MB）
                             if (file.size > 5 * 1024 * 1024) {
-                              alert('图片大小不能超过 5MB');
+                              message.warning('图片大小不能超过 5MB');
                               return;
                             }
                             // 检查文件类型
                             const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
                             if (!validTypes.includes(file.type)) {
-                              alert('只支持 JPG、PNG、WEBP 格式的图片');
+                              message.warning('只支持 JPG、PNG、WEBP 格式的图片');
                               return;
                             }
                             
                             // 先创建预览 URL
                             const previewUrl = URL.createObjectURL(file);
-                            setCsConfig({...csConfig, image: previewUrl});
+                            setCsConfig({...csConfig, qrCodeUrl: previewUrl});
                             
                             // 开始上传
                             setCsUploading(true);
@@ -445,14 +464,14 @@ const MarketingManagement = () => {
                               // 调用后端上传接口，上传到 images/ 文件夹
                               const uploadedUrl = await uploadAPI.uploadImage(file, 'images/');
                               // 使用服务器返回的URL替换预览URL
-                              setCsConfig({...csConfig, image: uploadedUrl});
+                              setCsConfig(prev => ({...prev, qrCodeUrl: uploadedUrl}));
                               // 释放预览URL
                               URL.revokeObjectURL(previewUrl);
                             } catch (error) {
                               // 上传失败，恢复原状态
                               console.error('图片上传失败:', error);
-                              alert('图片上传失败：' + (error instanceof Error ? error.message : '未知错误'));
-                              setCsConfig({...csConfig, image: ''});
+                              message.error('图片上传失败：' + (error instanceof Error ? error.message : '未知错误'));
+                              setCsConfig(prev => ({...prev, qrCodeUrl: ''}));
                               // 释放预览URL
                               URL.revokeObjectURL(previewUrl);
                             } finally {
@@ -467,21 +486,32 @@ const MarketingManagement = () => {
                   <textarea 
                     className="w-full p-3 border rounded-lg h-24 resize-none outline-none focus:border-blue-500" 
                     placeholder="请输入联系方式文本说明..." 
-                    value={csConfig.text}
-                    onChange={e => setCsConfig({...csConfig, text: e.target.value})}
+                    value={csConfig.contactText || ''}
+                    onChange={e => setCsConfig({...csConfig, contactText: e.target.value})}
                   />
               </FormItem>
-              <button className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-bold shadow-md hover:bg-blue-700 transition-colors" onClick={() => setCsModal(false)}>保存客服配置</button>
+              <button className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-bold shadow-md hover:bg-blue-700 transition-colors" disabled={csSaving} onClick={saveCsConfig}>{csSaving ? '保存中...' : '保存客服配置'}</button>
           </div>
       </Modal>
 
-      {editAd && <AdEditorModal ad={editAd} onClose={() => setEditAd(null)} onSave={loadAds} />}
+      {editAd && <AdEditorModal ad={editAd} existingAds={ads} onClose={() => setEditAd(null)} onSave={loadAds} />}
     </div>
   );
 };
 
-const AdEditorModal = ({ ad, onClose, onSave }: { ad: Partial<MarketingAd>; onClose: () => void; onSave?: () => void }) => {
-  const [formData, setFormData] = useState(ad);
+const AdEditorModal = ({ ad, existingAds = [], onClose, onSave }: { ad: Partial<MarketingAd>; existingAds?: MarketingAd[]; onClose: () => void; onSave?: () => void }) => {
+  const [formData, setFormData] = useState(() => {
+    const today = new Date();
+    const nextWeek = new Date(today);
+    nextWeek.setDate(today.getDate() + 7);
+    const formatDate = (date: Date) => date.toISOString().split('T')[0];
+    
+    return {
+      ...ad,
+      startDate: ad.startDate || formatDate(today),
+      endDate: ad.endDate || formatDate(nextWeek)
+    };
+  });
   const [activeTab, setActiveTab] = useState(ad.linkType || 'external');
   const fileInputRef = useRef<HTMLInputElement>(null); // 文件输入引用
   const [uploading, setUploading] = useState(false); // 上传状态
@@ -490,33 +520,55 @@ const AdEditorModal = ({ ad, onClose, onSave }: { ad: Partial<MarketingAd>; onCl
   // 当ad对象变化时，同步更新formData（避免状态不同步导致的闪退）
   // 使用关键字段作为依赖，避免对象引用变化导致的频繁更新
   useEffect(() => {
-    setFormData(ad);
+    const today = new Date();
+    const nextWeek = new Date(today);
+    nextWeek.setDate(today.getDate() + 7);
+    const formatDate = (date: Date) => date.toISOString().split('T')[0];
+
+    setFormData({
+      ...ad,
+      startDate: ad.startDate || formatDate(today),
+      endDate: ad.endDate || formatDate(nextWeek)
+    });
     setActiveTab(ad.linkType || 'external');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ad?.id, ad?.title, ad?.imageUrl, ad?.linkType, ad?.siteId, ad?.position]); // 只在关键字段变化时更新
+  }, [ad?.id, ad?.title, ad?.imageUrl, ad?.linkType, ad?.siteId, ad?.position, ad?.startDate, ad?.endDate]); // 只在关键字段变化时更新
 
   // 保存广告
   const handleSave = async () => {
     // 验证必填字段
     if (!formData.title) {
-      alert('请输入广告标题');
+      message.warning('请输入广告标题');
       return;
     }
     if (!formData.siteId) {
-      alert('请选择所属站点');
+      message.warning('请选择所属站点');
       return;
     }
     if (!formData.position || formData.position < 1) {
-      alert('请输入有效的广告位顺序（正整数，数字越小排序越靠前）');
+      message.warning('请输入有效的广告位顺序（正整数，数字越小排序越靠前）');
       return;
     }
     if (!formData.imageUrl) {
-      alert('请上传广告图片');
+      message.warning('请上传广告图片');
       return;
     }
     if (!formData.startDate || !formData.endDate) {
-      alert('请选择开始时间和结束时间');
+      message.warning('请选择开始时间和结束时间');
       return;
+    }
+
+    // 检查广告位是否重复
+    const targetSiteId = formData.siteId || SITES.MEDICAL;
+    // 只有当现有广告列表中包含目标站点的广告时，我们才能在前端进行有效验证
+    // 如果列表为空或者包含的是其他站点的广告，则无法在前端验证（交由后端验证）
+    const adsInSite = existingAds.filter(a => a.siteId === targetSiteId);
+    if (adsInSite.length > 0) {
+      const conflict = adsInSite.find(a => a.position === formData.position && a.id !== formData.id);
+      if (conflict) {
+        message.warning(`该站点广告位 ${formData.position} 已被占用，请修改`);
+        return;
+      }
     }
 
     // 同步activeTab到formData.linkType
@@ -534,11 +586,11 @@ const AdEditorModal = ({ ad, onClose, onSave }: { ad: Partial<MarketingAd>; onCl
       if (ad.id) {
         // 更新广告
         await marketingAPI.updateAd(ad.id.toString(), siteId, finalData);
-        alert('广告更新成功');
+        message.success('广告更新成功');
       } else {
         // 创建广告
         await marketingAPI.createAd(siteId, finalData);
-        alert('广告创建成功');
+        message.success('广告创建成功');
       }
       // 刷新列表
       if (onSave) {
@@ -548,14 +600,13 @@ const AdEditorModal = ({ ad, onClose, onSave }: { ad: Partial<MarketingAd>; onCl
       onClose();
     } catch (error) {
       console.error('保存广告失败:', error);
-      alert('保存失败：' + (error instanceof Error ? error.message : '未知错误'));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title={ad.id ? "编辑全屏广告" : "新增全屏广告"} size="full">
+    <Modal isOpen={true} onClose={onClose} title={ad.id ? "编辑全屏广告" : "新增全屏广告"} size="full" maskClosable={false}>
       <div className="flex flex-col lg:flex-row gap-8 h-full">
         {/* Left Panel: Config */}
         <div className="w-full lg:w-1/3 flex flex-col gap-5 overflow-y-auto pr-2 custom-scrollbar">
@@ -614,13 +665,13 @@ const AdEditorModal = ({ ad, onClose, onSave }: { ad: Partial<MarketingAd>; onCl
                   if (file) {
                     // 检查文件大小（5MB = 5 * 1024 * 1024 字节）
                     if (file.size > 5 * 1024 * 1024) {
-                      alert('图片大小不能超过 5MB');
+                      message.warning('图片大小不能超过 5MB');
                       return;
                     }
                     // 检查文件类型
                     const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
                     if (!validTypes.includes(file.type)) {
-                      alert('只支持 JPG、PNG、WEBP 格式的图片');
+                      message.warning('只支持 JPG、PNG、WEBP 格式的图片');
                       return;
                     }
                     
@@ -704,16 +755,24 @@ const AdEditorModal = ({ ad, onClose, onSave }: { ad: Partial<MarketingAd>; onCl
         {/* Right Panel: Rich Text Editor */}
         <div className="w-full lg:w-2/3 border border-slate-200 rounded-xl flex flex-col overflow-hidden bg-white shadow-sm">
           <div className="px-5 py-3 border-b bg-slate-50/50"><label className="font-bold text-slate-700 text-sm flex items-center gap-2"><div className="w-1 h-4 bg-blue-600 rounded-full"></div> 文章详情内容</label></div>
-          {/* Mock Toolbar */}
-          <div className="border-b bg-white p-2 flex flex-wrap gap-1 sticky top-0 z-10">
-            <button className="p-1.5 hover:bg-slate-100 rounded text-slate-600"><Undo size={16}/></button><button className="p-1.5 hover:bg-slate-100 rounded text-slate-600"><Redo size={16}/></button><div className="w-px h-5 bg-slate-200 mx-1 self-center" />
-            <button className="p-1.5 hover:bg-slate-100 rounded text-slate-600"><Bold size={16}/></button><button className="p-1.5 hover:bg-slate-100 rounded text-slate-600"><Italic size={16}/></button><button className="p-1.5 hover:bg-slate-100 rounded text-slate-600"><Underline size={16}/></button><div className="w-px h-5 bg-slate-200 mx-1 self-center" />
-            <button className="p-1.5 hover:bg-slate-100 rounded text-slate-600"><AlignLeft size={16}/></button><button className="p-1.5 hover:bg-slate-100 rounded text-slate-600"><AlignCenter size={16}/></button><button className="p-1.5 hover:bg-slate-100 rounded text-slate-600"><AlignRight size={16}/></button><div className="w-px h-5 bg-slate-200 mx-1 self-center" />
-            <button className="p-1.5 hover:bg-slate-100 rounded text-slate-600"><LinkIcon size={16}/></button><button className="p-1.5 hover:bg-slate-100 rounded text-slate-600"><ImageIcon size={16}/></button><button className="p-1.5 hover:bg-slate-100 rounded text-slate-600"><Code size={16}/></button>
-          </div>
-          <div className="flex-1 p-6 bg-white relative">
+          <div className="flex-1 bg-white relative flex flex-col overflow-hidden">
              {activeTab === 'external' && <div className="absolute inset-0 bg-slate-50/80 backdrop-blur-[1px] z-10 flex items-center justify-center text-slate-400 font-medium">外部跳转模式下无需编辑详情</div>}
-             <textarea className="w-full h-full resize-none outline-none text-slate-700 leading-relaxed" placeholder="在此输入富文本内容..." value={formData.richContent} onChange={e => setFormData({...formData, richContent: e.target.value})} />
+             <ReactQuill 
+                theme="snow"
+                value={formData.richContent || ''} 
+                onChange={(content) => setFormData({...formData, richContent: content})}
+                className="h-full flex flex-col [&>.ql-container]:flex-1 [&>.ql-container]:overflow-auto"
+                modules={{
+                  toolbar: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{'align': []}],
+                    [{'list': 'ordered'}, {'list': 'bullet'}],
+                    ['link', 'image', 'code-block'],
+                    ['clean']
+                  ],
+                }}
+             />
           </div>
           <div className="p-4 border-t bg-white">
             <label className="text-xs font-bold text-slate-500 mb-2 block">关联标签</label>
@@ -810,7 +869,7 @@ const MenuManagement = () => {
       }));
     } catch (error) {
       console.error('更新菜单失败:', error);
-      alert('更新菜单失败，请重试');
+      message.error('更新菜单失败，请重试');
     }
   };
 
@@ -829,7 +888,7 @@ const MenuManagement = () => {
       setEditMenu(null);
     } catch (error) {
       console.error('更新菜单名称失败:', error);
-      alert('更新菜单名称失败，请重试');
+      message.error('更新菜单名称失败，请重试');
     }
   };
 
@@ -859,7 +918,7 @@ const MenuManagement = () => {
       </div>
       
       {editMenu && (
-          <Modal isOpen={true} onClose={() => setEditMenu(null)} title="修改菜单名称" size="md">
+          <Modal isOpen={true} onClose={() => setEditMenu(null)} title="修改菜单名称" size="md" maskClosable={false}>
               <div className="space-y-4">
                   <FormItem label="菜单名称">
                       <input className="w-full p-2 border rounded" value={editMenu.label} onChange={e => setEditMenu({...editMenu, label: e.target.value})} />
@@ -1052,16 +1111,21 @@ const ApiManagement = () => {
 
   // 删除平台
   const handleDelete = async (id: string) => {
-    // 确认删除
-    if (!window.confirm('确认删除该API平台吗？删除后无法恢复！')) return;
-    try {
-      // 调用删除API，传递当前选中的siteId
-      await apiPlatformAPI.deletePlatform(Number(id), activeSiteId);
-      // 重新加载列表
-      await loadPlatforms();
-    } catch (err: any) {
-      alert('删除失败: ' + (err.message || '未知错误'));
-    }
+    AntModal.confirm({
+      title: '确认删除',
+      content: '确认删除该API平台吗？删除后无法恢复！',
+      onOk: async () => {
+        try {
+          // 调用删除API，传递当前选中的siteId
+          await apiPlatformAPI.deletePlatform(Number(id), activeSiteId);
+          message.success('删除成功');
+          // 重新加载列表
+          await loadPlatforms();
+        } catch (err: any) {
+          message.error('删除失败: ' + (err.message || '未知错误'));
+        }
+      }
+    });
   };
 
   return (
@@ -1154,7 +1218,10 @@ const ApiConfigModal = ({ platform, activeSiteId, onClose, onSave }: { platform:
         // 如果有平台ID，从后端获取原始数据
         if (platformId && interfaceId) {
             try {
-                const platformDetail = await apiPlatformAPI.getPlatform(parseInt(platformId));
+                // 使用 activeSiteId 作为 fallback，因为在这里我们可能拿不到 platform 的 siteId
+                // 但通常编辑时 activeSiteId 应该是一致的，或者我们需要从 props 传入 platformSiteId
+                // 由于 getHeadersJson 是在内部调用的，我们可以访问 basicInfo.siteId
+                const platformDetail = await apiPlatformAPI.getPlatform(parseInt(platformId), basicInfo.siteId || activeSiteId);
                 const iface = platformDetail.interfaces?.find(i => i.id?.toString() === interfaceId);
                 if (iface?.headers && typeof iface.headers === 'string') {
                     try {
@@ -1216,7 +1283,7 @@ const ApiConfigModal = ({ platform, activeSiteId, onClose, onSave }: { platform:
     // 组件加载时，如果有platform ID，获取完整的headers和supportedModels数据
     useEffect(() => {
         if (platform?.id) {
-            apiPlatformAPI.getPlatform(parseInt(platform.id)).then(platformDetail => {
+            apiPlatformAPI.getPlatform(parseInt(platform.id), platform.siteId || activeSiteId).then(platformDetail => {
                 const genIf = platformDetail.interfaces?.find(i => i.responseMode !== 'Result');
                 const resIf = platformDetail.interfaces?.find(i => i.responseMode === 'Result');
                 
@@ -1250,19 +1317,19 @@ const ApiConfigModal = ({ platform, activeSiteId, onClose, onSave }: { platform:
     const handleSave = async () => {
         // 验证必填字段
         if (!basicInfo.name.trim()) {
-            alert('请输入平台名称');
+            message.warning('请输入平台名称');
             return;
         }
         if (!basicInfo.type) {
-            alert('请选择接口类型');
+            message.warning('请选择接口类型');
             return;
         }
         if (!basicInfo.siteId) {
-            alert('请选择所属站点');
+            message.warning('请选择所属站点');
             return;
         }
         if (!genInterface.url.trim()) {
-            alert('请输入图片/视频生成接口URL');
+            message.warning('请输入图片/视频生成接口URL');
             return;
         }
         
@@ -1298,7 +1365,7 @@ const ApiConfigModal = ({ platform, activeSiteId, onClose, onSave }: { platform:
                 JSON.parse(genInterface.headers); // 验证JSON格式
                 genHeadersJson = genInterface.headers;
             } catch (e) {
-                alert('生成接口的请求头JSON格式错误，将使用空对象');
+                message.warning('生成接口的请求头JSON格式错误，将使用空对象');
             }
             
             let resultHeadersJson = '{}';
@@ -1306,7 +1373,7 @@ const ApiConfigModal = ({ platform, activeSiteId, onClose, onSave }: { platform:
                 JSON.parse(resultInterface.headers); // 验证JSON格式
                 resultHeadersJson = resultInterface.headers;
             } catch (e) {
-                alert('结果接口的请求头JSON格式错误，将使用空对象');
+                message.warning('结果接口的请求头JSON格式错误，将使用空对象');
             }
             
             // 生成接口
@@ -1351,12 +1418,15 @@ const ApiConfigModal = ({ platform, activeSiteId, onClose, onSave }: { platform:
             // 调用API
             if (platform?.id) {
                 // 更新
-                await apiPlatformAPI.updatePlatform(parseInt(platform.id), request);
-                alert('更新成功');
+                // 注意：这里必须传入原始的siteId (platform.siteId) 用于定位资源，
+                // 而 request 中包含的是可能修改后的新 siteId
+                const originalSiteId = platform.siteId || activeSiteId;
+                await apiPlatformAPI.updatePlatform(parseInt(platform.id), request, originalSiteId);
+                message.success('更新成功');
             } else {
                 // 创建
                 await apiPlatformAPI.createPlatform(request);
-                alert('创建成功');
+                message.success('创建成功');
             }
             
             // 调用保存成功回调（会刷新列表并关闭弹窗）
@@ -1368,7 +1438,7 @@ const ApiConfigModal = ({ platform, activeSiteId, onClose, onSave }: { platform:
             }
         } catch (err: any) {
             console.error('保存失败:', err);
-            alert('保存失败：' + (err.message || '未知错误'));
+            // message.error已在api/index.ts中处理，此处不再重复显示
         } finally {
             setSaving(false);
         }
@@ -1407,7 +1477,7 @@ const ApiConfigModal = ({ platform, activeSiteId, onClose, onSave }: { platform:
     );
 
     return (
-        <Modal isOpen={true} onClose={onClose} title={platform ? "编辑 API 接口配置" : "新增 API 接口平台"} size="lg">
+        <Modal isOpen={true} onClose={onClose} title={platform ? "编辑 API 接口配置" : "新增 API 接口平台"} size="lg" maskClosable={false}>
             <div className="space-y-8">
                 {/* Section 1: Basic Info */}
                 <div className="space-y-4">
@@ -1421,9 +1491,15 @@ const ApiConfigModal = ({ platform, activeSiteId, onClose, onSave }: { platform:
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <FormItem label="所属站点">
-                            <select className="w-full p-2 border rounded" value={basicInfo.siteId} onChange={e => setBasicInfo({...basicInfo, siteId: parseInt(e.target.value) as SiteId})}>
+                            <select 
+                                className="w-full p-2 border rounded disabled:bg-slate-100 disabled:text-slate-500" 
+                                value={basicInfo.siteId} 
+                                onChange={e => setBasicInfo({...basicInfo, siteId: parseInt(e.target.value) as SiteId})}
+                                disabled={!!platform}
+                            >
                                 <option value={SITES.MEDICAL}>医美类</option><option value={SITES.ECOMMERCE}>电商类</option><option value={SITES.LIFE}>生活服务类</option>
                             </select>
+                            {!!platform && <p className="text-xs text-amber-500 mt-1">所属站点不可修改，如需变更请删除后重新创建</p>}
                         </FormItem>
                         <FormItem label="节点信息">
                             <select className="w-full p-2 border rounded" value={basicInfo.node} onChange={e => setBasicInfo({...basicInfo, node: e.target.value})}>
@@ -1568,7 +1644,7 @@ const PaymentManagement = () => {
   const toggleChannel = async (ch: string) => {
     const paymentType = paymentTypeMap[ch];
     if (!paymentType) {
-      alert('无效的支付方式');
+      message.error('无效的支付方式');
       return;
     }
 
@@ -1584,7 +1660,7 @@ const PaymentManagement = () => {
       }));
     } catch (error) {
       console.error('更新支付配置失败:', error);
-      alert('更新支付配置失败，请重试');
+      message.error('更新支付配置失败，请重试');
     }
   };
 
@@ -1686,7 +1762,7 @@ const PaymentConfigModal = ({
   // 保存配置
   const handleSave = async () => {
     if (!paymentType || !channel) {
-      alert('无效的支付方式');
+      message.error('无效的支付方式');
       return;
     }
     
@@ -1701,11 +1777,11 @@ const PaymentConfigModal = ({
         isEnabled: currentConfig?.isEnabled || false
       });
       
-      alert('保存成功');
+      message.success('保存成功');
       onSave();
     } catch (error) {
       console.error('保存支付配置失败:', error);
-      alert('保存失败：' + (error instanceof Error ? error.message : '未知错误'));
+      message.error('保存失败：' + (error instanceof Error ? error.message : '未知错误'));
     } finally {
       setSaving(false);
     }
@@ -1714,34 +1790,53 @@ const PaymentConfigModal = ({
   if (!channel) return null;
   
   return (
-    <Modal isOpen={true} onClose={onClose} title={`配置${channel}`}>
-      <div className="space-y-4">
+    <Modal isOpen={true} onClose={onClose} title={`配置${channel}`} maskClosable={false}>
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto p-1">
         <div className="bg-blue-50 p-3 rounded text-sm text-blue-800 mb-4 border border-blue-100">请直接粘贴证书内容或密钥字符串，无需上传文件。</div>
         {channel === '微信支付' && <>
-          <FormItem label="普通商户号">
-            <input 
-              className="w-full p-2 border rounded" 
-              value={formData.mchId || ''}
-              onChange={e => setFormData({...formData, mchId: e.target.value})}
-            />
-          </FormItem>
-          <FormItem label="V2微信支付秘钥">
-            <input 
-              className="w-full p-2 border rounded" 
-              type="password" 
-              value={formData.apiKey || ''}
-              onChange={e => setFormData({...formData, apiKey: e.target.value})}
-            />
-          </FormItem>
-          <FormItem label="商户付款证书内容 (PEM)">
+          <div className="grid grid-cols-2 gap-4">
+            <FormItem label="APPID">
+              <input 
+                className="w-full p-2 border rounded" 
+                value={formData.appId || ''}
+                onChange={e => setFormData({...formData, appId: e.target.value})}
+              />
+            </FormItem>
+            <FormItem label="商户号 (mchId)">
+              <input 
+                className="w-full p-2 border rounded" 
+                value={formData.mchId || ''}
+                onChange={e => setFormData({...formData, mchId: e.target.value})}
+              />
+            </FormItem>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <FormItem label="API V3密钥">
+              <input 
+                className="w-full p-2 border rounded" 
+                type="password"
+                placeholder="已加密，如需修改请直接输入"
+                value={formData.apiV3Key || ''}
+                onChange={e => setFormData({...formData, apiV3Key: e.target.value})}
+              />
+            </FormItem>
+            <FormItem label="证书序列号">
+              <input 
+                className="w-full p-2 border rounded" 
+                value={formData.certSerialNo || ''}
+                onChange={e => setFormData({...formData, certSerialNo: e.target.value})}
+              />
+            </FormItem>
+          </div>
+          <FormItem label="API证书内容 (PEM)">
             <textarea 
               className="w-full p-2 border rounded h-24 font-mono text-xs" 
               placeholder="-----BEGIN CERTIFICATE-----..."
-              value={formData.certificate || ''}
-              onChange={e => setFormData({...formData, certificate: e.target.value})}
+              value={formData.certContent || ''}
+              onChange={e => setFormData({...formData, certContent: e.target.value})}
             />
           </FormItem>
-          <FormItem label="商户付款私钥内容 (PEM)">
+          <FormItem label="API私钥内容 (PEM)">
             <textarea 
               className="w-full p-2 border rounded h-24 font-mono text-xs" 
               placeholder="-----BEGIN PRIVATE KEY-----..."
@@ -1751,25 +1846,69 @@ const PaymentConfigModal = ({
           </FormItem>
         </>}
         {channel === '支付宝支付' && <>
-          <FormItem label="AppID">
-            <input 
-              className="w-full p-2 border rounded" 
-              value={formData.appId || ''}
-              onChange={e => setFormData({...formData, appId: e.target.value})}
+          <div className="grid grid-cols-2 gap-4">
+            <FormItem label="应用APPID">
+              <input 
+                className="w-full p-2 border rounded" 
+                value={formData.appId || ''}
+                onChange={e => setFormData({...formData, appId: e.target.value})}
+              />
+            </FormItem>
+            <FormItem label="签名类型">
+              <input 
+                className="w-full p-2 border rounded" 
+                placeholder="RSA2"
+                value={formData.signType || ''}
+                onChange={e => setFormData({...formData, signType: e.target.value})}
+              />
+            </FormItem>
+          </div>
+          <FormItem label="网关地址">
+             <input 
+                className="w-full p-2 border rounded" 
+                placeholder="https://openapi.alipay.com/gateway.do"
+                value={formData.gatewayUrl || ''}
+                onChange={e => setFormData({...formData, gatewayUrl: e.target.value})}
+              />
+          </FormItem>
+          <FormItem label="应用私钥">
+            <textarea 
+              className="w-full p-2 border rounded h-24 font-mono text-xs"
+              placeholder="已加密，如需修改请直接输入"
+              value={formData.privateKey || ''}
+              onChange={e => setFormData({...formData, privateKey: e.target.value})}
             />
           </FormItem>
           <FormItem label="支付宝公钥">
             <textarea 
               className="w-full p-2 border rounded h-24 font-mono text-xs"
-              value={formData.publicKey || ''}
-              onChange={e => setFormData({...formData, publicKey: e.target.value})}
+              placeholder="已加密，如需修改请直接输入"
+              value={formData.alipayPublicKey || ''}
+              onChange={e => setFormData({...formData, alipayPublicKey: e.target.value})}
             />
           </FormItem>
-          <FormItem label="应用私钥">
+          <FormItem label="应用公钥证书">
             <textarea 
               className="w-full p-2 border rounded h-24 font-mono text-xs"
-              value={formData.privateKey || ''}
-              onChange={e => setFormData({...formData, privateKey: e.target.value})}
+              placeholder="-----BEGIN CERTIFICATE-----..."
+              value={formData.appCertContent || ''}
+              onChange={e => setFormData({...formData, appCertContent: e.target.value})}
+            />
+          </FormItem>
+          <FormItem label="支付宝根证书">
+            <textarea 
+              className="w-full p-2 border rounded h-24 font-mono text-xs"
+              placeholder="-----BEGIN CERTIFICATE-----..."
+              value={formData.alipayRootCertContent || ''}
+              onChange={e => setFormData({...formData, alipayRootCertContent: e.target.value})}
+            />
+          </FormItem>
+          <FormItem label="支付宝证书">
+            <textarea 
+              className="w-full p-2 border rounded h-24 font-mono text-xs"
+              placeholder="-----BEGIN CERTIFICATE-----..."
+              value={formData.alipayCertContent || ''}
+              onChange={e => setFormData({...formData, alipayCertContent: e.target.value})}
             />
           </FormItem>
         </>}
@@ -1823,7 +1962,8 @@ const GenerationRecords = () => {
       const data = await generationAPI.getGenerationRecords(siteId);
       setRecords(data);
     } catch (err: any) {
-      alert('加载记录失败: ' + (err.message || '未知错误'));
+      console.error('加载记录失败:', err);
+      message.error('加载记录失败: ' + (err.message || '未知错误'));
     } finally {
       setLoading(false);
     }
@@ -1878,7 +2018,19 @@ const InvitationManagement = () => {
   const [activeSiteId, setActiveSiteId] = useState<SiteId>(SITES.MEDICAL); // 默认医美类（siteId=1）
   const [codes, setCodes] = useState<InvitationCode[]>([]);
   const [loading, setLoading] = useState(false);
-  const [modal, setModal] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
+  
+  // 筛选条件
+  const [filters, setFilters] = useState({
+    code: '',
+    channel: '',
+    status: ''
+  });
+
+  const [generateModal, setGenerateModal] = useState(false);
+  const [editModal, setEditModal] = useState<{isOpen: boolean, code: InvitationCode | null}>({isOpen: false, code: null});
+  
   const [form, setForm] = useState({ 
       count: 1, 
       points: 100, 
@@ -1887,22 +2039,61 @@ const InvitationManagement = () => {
       validEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
       channel: ''
   });
-  
-  const loadCodes = async () => {
+
+  const loadCodes = async (
+    page = pagination.current, 
+    size = pagination.pageSize,
+    overrideFilters?: typeof filters
+  ) => {
     setLoading(true);
+    const currentFilters = overrideFilters || filters;
     try {
-      const data = await invitationAPI.getInvitations(activeSiteId);
-      setCodes(data);
+      // 使用 any 类型接收数据，以兼容旧接口（数组）和新接口（分页对象）
+      const data: any = await invitationAPI.getInvitations(
+        page, 
+        size, 
+        activeSiteId,
+        currentFilters.code,
+        currentFilters.channel,
+        currentFilters.status
+      );
+      
+      // 兼容处理
+      if (Array.isArray(data)) {
+        setCodes(data);
+        setTotal(data.length);
+      } else if (data && data.records) {
+        setCodes(data.records);
+        setTotal(data.total);
+      } else {
+        setCodes([]);
+        setTotal(0);
+      }
+      
+      setPagination({ current: page, pageSize: size });
     } catch (err: any) {
-      alert('加载邀请码失败: ' + (err.message || '未知错误'));
+      console.error('加载邀请码失败:', err);
+      message.error('加载邀请码失败: ' + (err.message || '未知错误'));
+      setCodes([]); // 出错时置空，防止页面崩溃
+      setTotal(0);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { loadCodes(); }, [activeSiteId]);
-  
-  const filteredCodes = codes;
+  useEffect(() => { 
+    loadCodes(1, pagination.pageSize); 
+  }, [activeSiteId]); // siteId 变化时重置到第一页
+
+  const handleSearch = () => {
+    loadCodes(1, pagination.pageSize);
+  };
+
+  const handleReset = () => {
+    const emptyFilters = { code: '', channel: '', status: '' };
+    setFilters(emptyFilters);
+    loadCodes(1, pagination.pageSize, emptyFilters);
+  };
 
   const generateCodes = async () => {
      try {
@@ -1915,38 +2106,151 @@ const InvitationManagement = () => {
           validStartDate: form.validStartDate,
           validEndDate: form.validEndDate
         });
-        await loadCodes();
-        setModal(false);
+        message.success('生成成功');
+        loadCodes(1, pagination.pageSize);
+        setGenerateModal(false);
      } catch (err: any) {
-        alert('生成失败: ' + (err.message || '未知错误'));
+        console.error('生成失败:', err);
      }
+  };
+  
+  const handleUpdate = async () => {
+    if (!editModal.code) return;
+    try {
+      await invitationAPI.updateInvitation(editModal.code.id, {
+        channel: editModal.code.channel,
+        status: editModal.code.status,
+        points: editModal.code.points,
+        maxUses: editModal.code.maxUses,
+        validStartDate: editModal.code.validStartDate, // Note: backend expects LocalDate string
+        validEndDate: editModal.code.validEndDate
+      } as any);
+      message.success('更新成功');
+      loadCodes(pagination.current, pagination.pageSize);
+      setEditModal({isOpen: false, code: null});
+    } catch (err: any) {
+      message.error('更新失败: ' + err.message);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('确定要删除这个邀请码吗？')) return;
+    try {
+      await invitationAPI.deleteInvitation(id);
+      message.success('删除成功');
+      loadCodes(pagination.current, pagination.pageSize);
+    } catch (err: any) {
+      message.error('删除失败: ' + err.message);
+    }
+  };
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      message.success('复制成功');
+    }).catch(() => {
+      message.error('复制失败');
+    });
   };
 
   return (
     <div className="bg-white rounded-xl border card-shadow h-[calc(100vh-140px)] flex flex-col animate-fade-in">
-      <div className="p-6 border-b flex justify-between items-center"><h3 className="font-bold text-xl">邀请码管理</h3><button onClick={() => setModal(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2"><Plus size={16}/> 生成邀请码</button></div>
-      <div className="p-4 bg-slate-50/50 border-b"><CategoryTabs selected={activeSiteId} onSelect={setActiveSiteId} /></div>
+      <div className="p-6 border-b flex justify-between items-center"><h3 className="font-bold text-xl">邀请码管理</h3><button onClick={() => setGenerateModal(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2"><Plus size={16}/> 生成邀请码</button></div>
+      <div className="p-4 bg-slate-50/50 border-b space-y-4">
+        <CategoryTabs selected={activeSiteId} onSelect={setActiveSiteId} />
+        
+        {/* 搜索表单 */}
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-slate-500 font-medium">邀请码</label>
+            <input 
+              type="text" 
+              className="px-3 py-2 border rounded-lg text-sm w-40" 
+              placeholder="输入邀请码"
+              value={filters.code}
+              onChange={e => setFilters({...filters, code: e.target.value})}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-slate-500 font-medium">渠道</label>
+            <input 
+              type="text" 
+              className="px-3 py-2 border rounded-lg text-sm w-40" 
+              placeholder="输入渠道"
+              value={filters.channel}
+              onChange={e => setFilters({...filters, channel: e.target.value})}
+            />
+          </div>
+          <div className="flex gap-2 pb-0.5">
+            <button 
+              onClick={handleSearch}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 flex items-center gap-2"
+            >
+              <Search size={14} /> 查询
+            </button>
+            <button 
+              onClick={handleReset}
+              className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-300 flex items-center gap-2"
+            >
+              <RefreshCw size={14} /> 重置
+            </button>
+          </div>
+        </div>
+      </div>
+      
       <div className="flex-1 overflow-auto">
         {loading ? (
           <div className="flex items-center justify-center h-64 text-slate-400">加载中...</div>
-        ) : filteredCodes.length === 0 ? (
+        ) : codes.length === 0 ? (
           <div className="flex items-center justify-center h-64 text-slate-400">暂无数据</div>
         ) : (
-          <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50 border-b"><tr><th className="px-6 py-3">邀请码</th><th className="px-6 py-3">渠道</th><th className="px-6 py-3">赠送积分</th><th className="px-6 py-3">已用/上限</th><th className="px-6 py-3">有效期</th><th className="px-6 py-3">状态</th><th className="px-6 py-3">创建时间</th></tr></thead>
-            <tbody>{filteredCodes.map(c => <tr key={c.id} className="border-b hover:bg-slate-50">
-               <td className="px-6 py-4 font-mono font-bold text-slate-700">{c.code} <button className="ml-2 text-slate-400 hover:text-blue-600"><Copy size={12}/></button></td>
-               <td className="px-6 py-4 text-xs text-slate-600">{c.channel || '-'}</td>
-               <td className="px-6 py-4 font-bold text-orange-500">{c.points}</td>
-               <td className="px-6 py-4">{c.usedCount}/{c.maxUses}</td>
-               <td className="px-6 py-4 text-xs text-slate-500">{c.validStartDate} ~ {c.validEndDate}</td>
-               <td className="px-6 py-4"><StatusBadge status={c.status} /></td>
-               <td className="px-6 py-4 text-slate-500">{c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '-'}</td>
-            </tr>)}</tbody>
-          </table>
+          <>
+            <table className="w-full text-sm text-left">
+              <thead className="bg-slate-50 border-b"><tr><th className="px-6 py-3">邀请码</th><th className="px-6 py-3">渠道</th><th className="px-6 py-3">赠送积分</th><th className="px-6 py-3">已用/上限</th><th className="px-6 py-3">有效期</th><th className="px-6 py-3">创建时间</th><th className="px-6 py-3 text-right">操作</th></tr></thead>
+              <tbody>{codes.map(c => <tr key={c.id} className="border-b hover:bg-slate-50">
+                 <td className="px-6 py-4 font-mono font-bold text-slate-700">{c.code} <button onClick={() => handleCopy(c.code)} className="ml-2 text-slate-400 hover:text-blue-600" title="复制邀请码"><Copy size={12}/></button></td>
+                 <td className="px-6 py-4 text-xs text-slate-600">{c.channel || '-'}</td>
+                 <td className="px-6 py-4 font-bold text-orange-500">{c.points}</td>
+                 <td className="px-6 py-4">{c.usedCount}/{c.maxUses}</td>
+                 <td className="px-6 py-4 text-xs text-slate-500">
+                   <div>起: {c.validStartDate || '-'}</div>
+                   <div>止: {c.validEndDate || '-'}</div>
+                 </td>
+                 <td className="px-6 py-4 text-slate-500">{c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '-'}</td>
+                 <td className="px-6 py-4 text-right flex justify-end gap-2">
+                   <button onClick={() => setEditModal({isOpen: true, code: {...c}})} className="text-blue-600 p-1 hover:bg-blue-50 rounded" title="编辑"><Edit size={16}/></button>
+                   <button onClick={() => handleDelete(c.id)} className="text-red-600 p-1 hover:bg-red-50 rounded" title="删除"><Trash2 size={16}/></button>
+                 </td>
+              </tr>)}</tbody>
+            </table>
+            
+            {/* 分页控件 */}
+            <div className="p-4 border-t flex justify-between items-center bg-white">
+              <div className="text-sm text-slate-500">
+                共 {total} 条记录，当前第 {pagination.current}/{Math.ceil(total / pagination.pageSize)} 页
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  disabled={pagination.current === 1}
+                  onClick={() => loadCodes(pagination.current - 1, pagination.pageSize)}
+                  className="px-3 py-1 border rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  上一页
+                </button>
+                <button 
+                  disabled={pagination.current >= Math.ceil(total / pagination.pageSize)}
+                  onClick={() => loadCodes(pagination.current + 1, pagination.pageSize)}
+                  className="px-3 py-1 border rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  下一页
+                </button>
+              </div>
+            </div>
+          </>
         )}
       </div>
-      <Modal isOpen={modal} onClose={() => setModal(false)} title="生成邀请码">
+      
+      {/* 生成邀请码弹窗 */}
+      <Modal isOpen={generateModal} onClose={() => setGenerateModal(false)} title="生成邀请码" maskClosable={false}>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
              <FormItem label="生成数量 (个)"><input type="number" className="w-full p-2 border rounded" value={form.count} onChange={e => setForm({...form, count: parseInt(e.target.value)})} /></FormItem>
@@ -1963,6 +2267,27 @@ const InvitationManagement = () => {
           <button onClick={generateCodes} className="w-full py-2 bg-blue-600 text-white rounded font-bold mt-2">确认生成</button>
         </div>
       </Modal>
+
+      {/* 编辑邀请码弹窗 */}
+      <Modal isOpen={editModal.isOpen} onClose={() => setEditModal({isOpen: false, code: null})} title="编辑邀请码" maskClosable={false}>
+        {editModal.code && (
+          <div className="space-y-4">
+            <FormItem label="邀请码"><input type="text" className="w-full p-2 border rounded bg-slate-100 text-slate-500" value={editModal.code.code} disabled /></FormItem>
+            <div className="grid grid-cols-2 gap-4">
+               <FormItem label="赠送积分"><input type="number" className="w-full p-2 border rounded" value={editModal.code.points} onChange={e => setEditModal({isOpen: true, code: {...editModal.code!, points: parseInt(e.target.value)}})} /></FormItem>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+               <FormItem label="使用次数限制"><input type="number" className="w-full p-2 border rounded" value={editModal.code.maxUses} onChange={e => setEditModal({isOpen: true, code: {...editModal.code!, maxUses: parseInt(e.target.value)}})} /></FormItem>
+               <FormItem label="使用渠道"><input type="text" className="w-full p-2 border rounded" value={editModal.code.channel || ''} onChange={e => setEditModal({isOpen: true, code: {...editModal.code!, channel: e.target.value}})} /></FormItem>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+               <FormItem label="开始时间"><input type="date" className="w-full p-2 border rounded" value={editModal.code.validStartDate} onChange={e => setEditModal({isOpen: true, code: {...editModal.code!, validStartDate: e.target.value}})} /></FormItem>
+               <FormItem label="结束时间"><input type="date" className="w-full p-2 border rounded" value={editModal.code.validEndDate} onChange={e => setEditModal({isOpen: true, code: {...editModal.code!, validEndDate: e.target.value}})} /></FormItem>
+            </div>
+            <button onClick={handleUpdate} className="w-full py-2 bg-blue-600 text-white rounded font-bold mt-2">保存修改</button>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
@@ -1972,6 +2297,7 @@ const SiteManagement = () => {
   const [loading, setLoading] = useState(false); // 加载状态
   const [editModal, setEditModal] = useState<{isOpen: boolean, site: Site | null}>({isOpen: false, site: null}); // 编辑弹窗状态
   const [domain, setDomain] = useState(''); // 域名输入
+  const [manual, setManual] = useState(''); // 使用手册输入
   
   // 加载站点列表
   const loadSites = async () => {
@@ -1980,7 +2306,8 @@ const SiteManagement = () => {
       const data = await siteAPI.getSites();
       setSites(data);
     } catch (err: any) {
-      alert('加载站点列表失败: ' + (err.message || '未知错误'));
+      console.error('加载站点列表失败:', err);
+      message.error('加载站点列表失败: ' + (err.message || '未知错误'));
     } finally {
       setLoading(false);
     }
@@ -1992,9 +2319,10 @@ const SiteManagement = () => {
   const openEditModal = (site: Site) => {
     setEditModal({isOpen: true, site});
     setDomain(site.domain);
+    setManual(site.manual || '');
   };
   
-  // 保存域名修改
+  // 保存修改
   const handleSave = async () => {
     if (!editModal.site) return;
     
@@ -2004,13 +2332,17 @@ const SiteManagement = () => {
     }
     
     try {
-      await siteAPI.updateSiteDomain(editModal.site.id.toString(), domain.trim());
-      alert('域名更新成功');
+      await siteAPI.updateSite(editModal.site.id.toString(), {
+        domain: domain.trim(),
+        manual: manual
+      });
+      message.success('站点信息更新成功');
       await loadSites();
       setEditModal({isOpen: false, site: null});
       setDomain('');
+      setManual('');
     } catch (err: any) {
-      alert('更新域名失败: ' + (err.message || '未知错误'));
+      message.error('更新站点失败: ' + (err.message || '未知错误'));
     }
   };
 
@@ -2032,6 +2364,7 @@ const SiteManagement = () => {
                 <th className="px-6 py-3">站点名称</th>
                 <th className="px-6 py-3">站点代码</th>
                 <th className="px-6 py-3">域名</th>
+                <th className="px-6 py-3">使用手册</th>
                 <th className="px-6 py-3">状态</th>
                 <th className="px-6 py-3 text-right">操作</th>
               </tr>
@@ -2047,6 +2380,9 @@ const SiteManagement = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 font-medium text-blue-600">{site.domain}</td>
+                  <td className="px-6 py-4 text-slate-500 max-w-[200px] truncate" title={site.manual}>
+                    {site.manual || '-'}
+                  </td>
                   <td className="px-6 py-4">
                     <StatusBadge status={site.status === 'active' ? 'active' : 'suspended'} />
                   </td>
@@ -2054,7 +2390,7 @@ const SiteManagement = () => {
                     <button 
                       onClick={() => openEditModal(site)} 
                       className="text-blue-600 p-2 hover:bg-blue-50 rounded"
-                      title="修改域名"
+                      title="编辑"
                     >
                       <Edit size={16}/>
                     </button>
@@ -2066,14 +2402,16 @@ const SiteManagement = () => {
         )}
       </div>
       
-      {/* 编辑域名弹窗 */}
+      {/* 编辑站点弹窗 */}
       <Modal 
         isOpen={editModal.isOpen} 
         onClose={() => {
           setEditModal({isOpen: false, site: null});
           setDomain('');
+          setManual('');
         }} 
-        title="修改域名"
+        title="编辑站点信息"
+        maskClosable={false}
       >
         <div className="space-y-4">
           <FormItem label="站点名称">
@@ -2100,13 +2438,21 @@ const SiteManagement = () => {
               value={domain} 
               onChange={e => setDomain(e.target.value)} 
             />
-            <p className="text-xs text-slate-500 mt-1">只能修改域名，其他信息不可修改</p>
+          </FormItem>
+          <FormItem label="使用手册">
+            <textarea 
+              className="w-full p-2 border rounded min-h-[100px]" 
+              placeholder="请输入使用手册内容..."
+              value={manual} 
+              onChange={e => setManual(e.target.value)} 
+            />
           </FormItem>
           <div className="flex justify-end gap-3 pt-4 border-t">
             <button
               onClick={() => {
                 setEditModal({isOpen: false, site: null});
                 setDomain('');
+                setManual('');
               }}
               className="px-6 py-2 rounded-lg text-slate-600 hover:bg-slate-100 font-medium"
             >
@@ -2136,7 +2482,7 @@ const AccountManagement = () => {
       const data = await accountAPI.getAccounts();
       setAccounts(data);
     } catch (err: any) {
-      alert('加载账号列表失败: ' + (err.message || '未知错误'));
+      message.error('加载账号列表失败: ' + (err.message || '未知错误'));
     } finally {
       setLoading(false);
     }
@@ -2154,7 +2500,8 @@ const AccountManagement = () => {
         await loadAccounts();
         setModal({isOpen: false, acc: null});
      } catch (err: any) {
-        alert('保存失败: ' + (err.message || '未知错误'));
+        console.error('保存失败:', err);
+        message.error('保存失败: ' + (err.message || '未知错误'));
      }
   };
 
@@ -2179,7 +2526,7 @@ const AccountManagement = () => {
           </table>
         )}
       </div>
-      <Modal isOpen={modal.isOpen} onClose={() => setModal({isOpen: false, acc: null})} title={modal.acc?.id ? '编辑账号' : '新增账号'}>
+      <Modal isOpen={modal.isOpen} onClose={() => setModal({isOpen: false, acc: null})} title={modal.acc?.id ? '编辑账号' : '新增账号'} maskClosable={false}>
         <div className="space-y-4">
           <FormItem label="登录邮箱" required>
             <input 

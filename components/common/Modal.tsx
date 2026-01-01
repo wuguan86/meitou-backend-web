@@ -8,9 +8,10 @@ interface ModalProps {
   title: string; // 弹窗标题
   children?: React.ReactNode; // 子内容
   size?: 'md' | 'lg' | 'xl' | 'full'; // 弹窗尺寸
+  maskClosable?: boolean; // 点击背景是否关闭，默认为 true
 }
 
-const Modal = ({ isOpen, onClose, title, children, size = 'md' }: ModalProps) => {
+const Modal = ({ isOpen, onClose, title, children, size = 'md', maskClosable = true }: ModalProps) => {
   if (!isOpen) return null; // 不显示时返回空
   
   // 尺寸映射
@@ -23,8 +24,8 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }: ModalProps) =>
   
   // 处理背景点击关闭（阻止事件冒泡，确保只在点击背景时关闭）
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // 只有当点击的是背景层本身（而不是其子元素）时才关闭
-    if (e.target === e.currentTarget) {
+    // 只有当点击的是背景层本身（而不是其子元素）时，且允许点击背景关闭时才关闭
+    if (e.target === e.currentTarget && maskClosable) {
       onClose();
     }
   };

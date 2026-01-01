@@ -22,7 +22,7 @@ export const useAssets = (
       );
       setAssets(data);
     } catch (err: any) {
-      alert('加载内容失败: ' + (err.message || '未知错误'));
+      console.error('加载内容失败:', err);
     } finally {
       setLoading(false);
     }

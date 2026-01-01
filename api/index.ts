@@ -2,6 +2,7 @@
  * API 基础配置
  * 提供统一的 HTTP 请求封装
  */
+import { message } from 'antd';
 
 // 开发环境：使用相对路径，通过Vite代理转发
 // 生产环境：根据实际部署情况配置
@@ -38,6 +39,25 @@ const request = async <T>(
 
     // 检查响应状态
     if (!response.ok) {
+      // 处理 401 Unauthorized 或 403 Forbidden
+      if (response.status === 401 || response.status === 403) {
+        // 清除认证信息
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('vidu_admin_session');
+        
+        message.error('会话已过期，请重新登录');
+        // 刷新页面以重置状态（回到登录页）
+        setTimeout(() => window.location.reload(), 1500);
+        throw new Error('会话已过期，请重新登录');
+      }
+
+      // 处理 500 系统错误
+      if (response.status >= 500) {
+        const errorMsg = '系统内部错误，请联系管理员';
+        message.error(errorMsg);
+        throw new Error(errorMsg);
+      }
+
       // 尝试解析错误信息
       let errorMessage = '请求失败';
       try {
@@ -46,6 +66,8 @@ const request = async <T>(
       } catch {
         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
+      
+      message.error(errorMessage);
       throw new Error(errorMessage);
     }
 
@@ -56,17 +78,25 @@ const request = async <T>(
       if (data.code === 200) {
         return data.data;
       } else {
-        throw new Error(data.message || '请求失败');
+        // 业务错误 (Business Error)
+        const errorMsg = data.message || '操作失败';
+        message.error(errorMsg);
+        throw new Error(errorMsg);
       }
     }
 
     return data;
-  } catch (error) {
+  } catch (error: any) {
     // 处理网络错误（如连接失败、跨域问题等）
     if (error instanceof TypeError && error.message.includes('fetch')) {
-      throw new Error('无法连接到服务器，请检查后端服务是否运行在 http://localhost:8080');
+      const netErrorMsg = '无法连接到服务器，请检查后端服务是否运行';
+      message.error(netErrorMsg);
+      throw new Error(netErrorMsg);
     }
-    // 重新抛出其他错误
+    
+    // 如果是我们在上面抛出的错误，不需要再次处理，但为了Promise链的catch，还是抛出
+    // 注意：这里可能导致组件层的 catch 也捕捉到。
+    // 如果组件层也 alert，就会重复。我们将移除组件层的 alert。
     throw error;
   }
 };

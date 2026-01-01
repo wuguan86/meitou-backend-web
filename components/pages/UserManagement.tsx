@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Search, Edit, Trash2, Gift } from 'lucide-react';
+import { message, Pagination, Modal as AntModal } from 'antd';
 import { User } from '../../types';
 import * as userAPI from '../../api/user';
 import { useUsers } from '../../hooks/useUsers';
@@ -24,7 +25,7 @@ const UserManagement = () => {
   }); // 赠送积分弹窗状态
   
   // 使用自定义 hook 获取用户数据
-  const { users, loading, loadUsers } = useUsers(activeSiteId, search);
+  const { users, loading, loadUsers, pagination, handlePageChange } = useUsers(activeSiteId, search);
   
   // 保存用户（新增或编辑）
   const handleSave = async (user: Partial<User>) => {
@@ -39,19 +40,27 @@ const UserManagement = () => {
       await loadUsers(); // 重新加载列表
       setModal({ isOpen: false, user: null });
     } catch (err: any) {
-      alert('保存失败: ' + (err.message || '未知错误'));
+      console.error('保存失败:', err);
+      message.error('保存失败: ' + (err.message || '未知错误'));
     }
   };
   
   // 删除用户
   const handleDelete = async (id: string) => {
-    if (!window.confirm('确认删除该用户吗?')) return;
-    try {
-      await userAPI.deleteUser(id, activeSiteId);
-      await loadUsers(); // 重新加载列表
-    } catch (err: any) {
-      alert('删除失败: ' + (err.message || '未知错误'));
-    }
+    AntModal.confirm({
+      title: '确认删除',
+      content: '确认删除该用户吗?',
+      onOk: async () => {
+        try {
+          await userAPI.deleteUser(id, activeSiteId);
+          await loadUsers(); // 重新加载列表
+          message.success('删除成功');
+        } catch (err: any) {
+          console.error('删除失败:', err);
+          // 错误已经在拦截器中处理，或者在这里显示
+        }
+      }
+    });
   };
 
   // 赠送积分
@@ -62,7 +71,7 @@ const UserManagement = () => {
       await loadUsers(); // 重新加载列表
       setGiftModal({ isOpen: false, user: null });
     } catch (err: any) {
-      alert('赠送积分失败: ' + (err.message || '未知错误'));
+      message.error('赠送积分失败: ' + (err.message || '未知错误'));
     }
   };
 
@@ -95,7 +104,8 @@ const UserManagement = () => {
       </div>
       
       {/* 用户列表 */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto flex flex-col">
+        <div className="flex-1 overflow-auto">
         {loading ? (
           <div className="flex items-center justify-center h-64 text-slate-400 text-sm">加载中...</div>
         ) : users.length === 0 ? (
@@ -207,6 +217,22 @@ const UserManagement = () => {
             </div>
           </>
         )}
+        </div>
+        
+        {/* 分页组件 */}
+        {!loading && users.length > 0 && (
+          <div className="p-4 border-t border-slate-100 flex justify-end bg-white">
+            <Pagination
+              current={pagination.current}
+              pageSize={pagination.pageSize}
+              total={pagination.total}
+              onChange={handlePageChange}
+              showSizeChanger
+              showTotal={(total) => `共 ${total} 条`}
+              size="small"
+            />
+          </div>
+        )}
       </div>
       
       {/* 编辑用户弹窗 */}
@@ -215,8 +241,10 @@ const UserManagement = () => {
           isOpen={true} 
           onClose={() => setModal({ isOpen: false, user: null })} 
           title={modal.user?.id ? '编辑用户' : '新增用户'}
+          maskClosable={false}
         >
           <UserForm 
+            key={modal.user?.id ? `edit-${modal.user.id}` : 'create'}
             user={modal.user} 
             onSave={handleSave} 
             onCancel={() => setModal({ isOpen: false, user: null })} 

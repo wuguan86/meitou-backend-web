@@ -1,5 +1,13 @@
 import { SiteId } from './constants/sites';
 
+export interface PageResult<T> {
+  records: T[];
+  total: number;
+  size: number;
+  current: number;
+  pages: number;
+}
+
 // Data Models
 
 export interface User {
@@ -24,6 +32,7 @@ export interface Site {
   domain: string; // 域名（用于识别站点，如：medical.example.com）
   status: 'active' | 'disabled'; // 状态：active-启用，disabled-禁用
   description?: string; // 站点描述
+  manual?: string; // 使用手册
   createdAt: string;
   updatedAt: string;
 }

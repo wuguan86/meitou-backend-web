@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
         // 配置代理，解决开发环境跨域问题
         proxy: {
           '^/api/(app|admin)': {
-            target: 'http://localhost:8080', // 后端API地址
+            target: 'http://localhost:8085', // 后端API地址
             changeOrigin: true, // 改变请求头中的origin
             secure: false, // 如果是https接口，需要配置这个参数
             // 配置代理请求，设置X-Forwarded-Host头

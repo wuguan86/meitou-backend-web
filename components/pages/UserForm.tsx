@@ -1,16 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User } from '../../types';
 import FormItem from '../common/FormItem';
 
 // UserForm 组件 - 用户表单组件
 interface UserFormProps {
   user: Partial<User> | null; // 用户数据（编辑时传入）
-  onSave: (user: Partial<User>) => void; // 保存回调
+  onSave: (user: Partial<User>) => void | Promise<void>; // 保存回调
   onCancel: () => void; // 取消回调
 }
 
-const UserForm = ({ user, onSave, onCancel }: UserFormProps) => {
+const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
   const [formData, setFormData] = useState(user || {}); // 表单数据
+  
+  useEffect(() => {
+    setFormData(user || {});
+  }, [user]);
   
   // 处理输入变化
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -26,6 +30,7 @@ const UserForm = ({ user, onSave, onCancel }: UserFormProps) => {
           value={formData.email || ''} 
           onChange={handleChange} 
           className="w-full p-2 border rounded" 
+          autoComplete="off"
         />
       </FormItem>
       {/* 用户名输入 */}
@@ -35,6 +40,7 @@ const UserForm = ({ user, onSave, onCancel }: UserFormProps) => {
           value={formData.username || ''} 
           onChange={handleChange} 
           className="w-full p-2 border rounded" 
+          autoComplete="off"
         />
       </FormItem>
       {/* 手机号输入 */}
@@ -44,6 +50,7 @@ const UserForm = ({ user, onSave, onCancel }: UserFormProps) => {
           value={formData.phone || ''} 
           onChange={handleChange} 
           className="w-full p-2 border rounded" 
+          autoComplete="off"
         />
       </FormItem>
       {/* 登录密码输入 */}
@@ -55,6 +62,7 @@ const UserForm = ({ user, onSave, onCancel }: UserFormProps) => {
           value={formData.password || ''} 
           onChange={handleChange} 
           className="w-full p-2 border rounded" 
+          autoComplete="new-password"
         />
       </FormItem>
       {/* 公司/机构输入 */}
