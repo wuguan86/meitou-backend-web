@@ -69,12 +69,14 @@ import ToggleSwitch from './components/common/ToggleSwitch';
 import StatusBadge from './components/common/StatusBadge';
 import CategoryTabs from './components/common/CategoryTabs';
 import FormItem from './components/common/FormItem';
+import { ModelManager } from './components/common/ModelManager';
 
 // 导入已提取的页面组件
 import Dashboard from './components/pages/Dashboard';
 import UserManagement from './components/pages/UserManagement';
 import AssetsManagement from './components/pages/AssetsManagement';
 import RechargeConfigManagement from './components/pages/RechargeConfigManagement';
+import ApiParameterMappingManagement from './components/pages/ApiParameterMappingManagement';
 
 // 导入已提取的布局组件
 import Login from './components/layout/Login';
@@ -403,6 +405,9 @@ const MarketingManagement = () => {
                     <div className="flex items-center gap-2">
                         <h4 className="font-bold text-slate-800">{ad.title}</h4>
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">广告位 {ad.position}</span>
+                        {new Date(ad.endDate) < new Date() && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium">过期</span>
+                        )}
                     </div>
                     <p className="text-xs text-slate-500 mt-1 line-clamp-1">{ad.summary || '暂无描述'}</p>
                 </div>
@@ -1283,7 +1288,7 @@ const ApiConfigModal = ({ platform, activeSiteId, onClose, onSave }: { platform:
     // 组件加载时，如果有platform ID，获取完整的headers和supportedModels数据
     useEffect(() => {
         if (platform?.id) {
-            apiPlatformAPI.getPlatform(parseInt(platform.id), platform.siteId || activeSiteId).then(platformDetail => {
+            apiPlatformAPI.getPlatform(parseInt(String(platform.id)), platform.siteId || activeSiteId).then(platformDetail => {
                 const genIf = platformDetail.interfaces?.find(i => i.responseMode !== 'Result');
                 const resIf = platformDetail.interfaces?.find(i => i.responseMode === 'Result');
                 
@@ -1421,7 +1426,7 @@ const ApiConfigModal = ({ platform, activeSiteId, onClose, onSave }: { platform:
                 // 注意：这里必须传入原始的siteId (platform.siteId) 用于定位资源，
                 // 而 request 中包含的是可能修改后的新 siteId
                 const originalSiteId = platform.siteId || activeSiteId;
-                await apiPlatformAPI.updatePlatform(parseInt(platform.id), request, originalSiteId);
+                await apiPlatformAPI.updatePlatform(parseInt(String(platform.id)), request, originalSiteId);
                 message.success('更新成功');
             } else {
                 // 创建
@@ -1529,13 +1534,11 @@ const ApiConfigModal = ({ platform, activeSiteId, onClose, onSave }: { platform:
                         </p>
                     </FormItem>
                     <FormItem label="支持的模型">
-                        <input 
-                            className="w-full p-2 border rounded" 
-                            placeholder="例如: flux-1.0#flux-2.0#flux-3.0"
+                        <ModelManager 
                             value={basicInfo.supportedModels}
-                            onChange={e => setBasicInfo({...basicInfo, supportedModels: e.target.value})}
+                            onChange={val => setBasicInfo({...basicInfo, supportedModels: val})}
                         />
-                        <p className="text-xs text-slate-500 mt-1">输入模型列表，多个模型以#号分割，例如：flux-1.0#flux-2.0</p>
+                        <p className="text-xs text-slate-500 mt-1">配置模型列表及其支持的分辨率、算力消耗等信息</p>
                     </FormItem>
                 </div>
 
@@ -1828,6 +1831,15 @@ const PaymentConfigModal = ({
               />
             </FormItem>
           </div>
+          <FormItem label="回调地址 (Notify URL)">
+             <input 
+               className="w-full p-2 border rounded" 
+               placeholder="例如：http://your-domain.com/api/app/recharge/callback/wechat"
+               value={formData.notifyUrl || ''}
+               onChange={e => setFormData({...formData, notifyUrl: e.target.value})}
+             />
+             <p className="text-xs text-slate-400 mt-1">接收微信支付结果通知的完整URL</p>
+          </FormItem>
           <FormItem label="API证书内容 (PEM)">
             <textarea 
               className="w-full p-2 border rounded h-24 font-mono text-xs" 
@@ -1870,6 +1882,15 @@ const PaymentConfigModal = ({
                 value={formData.gatewayUrl || ''}
                 onChange={e => setFormData({...formData, gatewayUrl: e.target.value})}
               />
+          </FormItem>
+          <FormItem label="回调地址 (Notify URL)">
+             <input 
+               className="w-full p-2 border rounded" 
+               placeholder="例如：http://your-domain.com/api/app/recharge/callback/alipay"
+               value={formData.notifyUrl || ''}
+               onChange={e => setFormData({...formData, notifyUrl: e.target.value})}
+             />
+             <p className="text-xs text-slate-400 mt-1">接收支付宝支付结果通知的完整URL</p>
           </FormItem>
           <FormItem label="应用私钥">
             <textarea 
@@ -2145,11 +2166,41 @@ const InvitationManagement = () => {
   };
 
   const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      message.success('复制成功');
-    }).catch(() => {
-      message.error('复制失败');
-    });
+    // 降级复制方案
+    const fallbackCopy = (content: string) => {
+      try {
+        const textArea = document.createElement("textarea");
+        textArea.value = content;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        if (successful) {
+          message.success('复制成功');
+        } else {
+          message.error('复制失败');
+        }
+      } catch (err) {
+        console.error('Fallback copy failed:', err);
+        message.error('复制失败');
+      }
+    };
+
+    // 优先使用 Clipboard API
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(() => {
+        message.success('复制成功');
+      }).catch(() => {
+        fallbackCopy(text);
+      });
+    } else {
+      fallbackCopy(text);
+    }
   };
 
   return (
@@ -2298,6 +2349,9 @@ const SiteManagement = () => {
   const [editModal, setEditModal] = useState<{isOpen: boolean, site: Site | null}>({isOpen: false, site: null}); // 编辑弹窗状态
   const [domain, setDomain] = useState(''); // 域名输入
   const [manual, setManual] = useState(''); // 使用手册输入
+  const [userAgreement, setUserAgreement] = useState(''); // 用户协议
+  const [privacyPolicy, setPrivacyPolicy] = useState(''); // 隐私政策
+  const [copyright, setCopyright] = useState(''); // 版权信息
   
   // 加载站点列表
   const loadSites = async () => {
@@ -2320,6 +2374,9 @@ const SiteManagement = () => {
     setEditModal({isOpen: true, site});
     setDomain(site.domain);
     setManual(site.manual || '');
+    setUserAgreement(site.userAgreement || '');
+    setPrivacyPolicy(site.privacyPolicy || '');
+    setCopyright(site.copyright || '');
   };
   
   // 保存修改
@@ -2334,13 +2391,19 @@ const SiteManagement = () => {
     try {
       await siteAPI.updateSite(editModal.site.id.toString(), {
         domain: domain.trim(),
-        manual: manual
+        manual: manual,
+        userAgreement: userAgreement,
+        privacyPolicy: privacyPolicy,
+        copyright: copyright
       });
       message.success('站点信息更新成功');
       await loadSites();
       setEditModal({isOpen: false, site: null});
       setDomain('');
       setManual('');
+      setUserAgreement('');
+      setPrivacyPolicy('');
+      setCopyright('');
     } catch (err: any) {
       message.error('更新站点失败: ' + (err.message || '未知错误'));
     }
@@ -2364,6 +2427,7 @@ const SiteManagement = () => {
                 <th className="px-6 py-3">站点名称</th>
                 <th className="px-6 py-3">站点代码</th>
                 <th className="px-6 py-3">域名</th>
+                <th className="px-6 py-3">版权信息</th>
                 <th className="px-6 py-3">使用手册</th>
                 <th className="px-6 py-3">状态</th>
                 <th className="px-6 py-3 text-right">操作</th>
@@ -2380,6 +2444,9 @@ const SiteManagement = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 font-medium text-blue-600">{site.domain}</td>
+                  <td className="px-6 py-4 text-slate-500 max-w-[150px] truncate" title={site.copyright}>
+                    {site.copyright || '-'}
+                  </td>
                   <td className="px-6 py-4 text-slate-500 max-w-[200px] truncate" title={site.manual}>
                     {site.manual || '-'}
                   </td>
@@ -2409,27 +2476,33 @@ const SiteManagement = () => {
           setEditModal({isOpen: false, site: null});
           setDomain('');
           setManual('');
+          setUserAgreement('');
+          setPrivacyPolicy('');
+          setCopyright('');
         }} 
         title="编辑站点信息"
+        size="xl"
         maskClosable={false}
       >
         <div className="space-y-4">
-          <FormItem label="站点名称">
-            <input 
-              type="text" 
-              className="w-full p-2 border rounded bg-slate-100 text-slate-500 cursor-not-allowed" 
-              value={editModal.site?.name || ''} 
-              disabled
-            />
-          </FormItem>
-          <FormItem label="站点代码">
-            <input 
-              type="text" 
-              className="w-full p-2 border rounded bg-slate-100 text-slate-500 cursor-not-allowed font-mono" 
-              value={editModal.site?.code || ''} 
-              disabled
-            />
-          </FormItem>
+          <div className="grid grid-cols-2 gap-4">
+            <FormItem label="站点名称">
+              <input 
+                type="text" 
+                className="w-full p-2 border rounded bg-slate-100 text-slate-500 cursor-not-allowed" 
+                value={editModal.site?.name || ''} 
+                disabled
+              />
+            </FormItem>
+            <FormItem label="站点代码">
+              <input 
+                type="text" 
+                className="w-full p-2 border rounded bg-slate-100 text-slate-500 cursor-not-allowed font-mono" 
+                value={editModal.site?.code || ''} 
+                disabled
+              />
+            </FormItem>
+          </div>
           <FormItem label="域名" required>
             <input 
               type="text" 
@@ -2439,20 +2512,56 @@ const SiteManagement = () => {
               onChange={e => setDomain(e.target.value)} 
             />
           </FormItem>
+          <FormItem label="版权信息">
+            <input 
+              type="text" 
+              className="w-full p-2 border rounded" 
+              placeholder="请输入版权信息"
+              value={copyright} 
+              onChange={e => setCopyright(e.target.value)} 
+            />
+          </FormItem>
           <FormItem label="使用手册">
             <textarea 
-              className="w-full p-2 border rounded min-h-[100px]" 
+              className="w-full p-2 border rounded min-h-[80px]" 
               placeholder="请输入使用手册内容..."
               value={manual} 
               onChange={e => setManual(e.target.value)} 
             />
           </FormItem>
+          
+          <div className="grid grid-cols-2 gap-6">
+            <FormItem label="用户协议">
+              <div className="h-64 mb-12">
+                <ReactQuill 
+                  theme="snow" 
+                  value={userAgreement} 
+                  onChange={setUserAgreement}
+                  className="h-48"
+                />
+              </div>
+            </FormItem>
+            <FormItem label="隐私政策">
+              <div className="h-64 mb-12">
+                <ReactQuill 
+                  theme="snow" 
+                  value={privacyPolicy} 
+                  onChange={setPrivacyPolicy}
+                  className="h-48"
+                />
+              </div>
+            </FormItem>
+          </div>
+
           <div className="flex justify-end gap-3 pt-4 border-t">
             <button
               onClick={() => {
                 setEditModal({isOpen: false, site: null});
                 setDomain('');
                 setManual('');
+                setUserAgreement('');
+                setPrivacyPolicy('');
+                setCopyright('');
               }}
               className="px-6 py-2 rounded-lg text-slate-600 hover:bg-slate-100 font-medium"
             >
@@ -2595,6 +2704,7 @@ function App() {
       MarketingManagement={MarketingManagement}
       MenuManagement={MenuManagement}
       ApiManagement={ApiManagement}
+      ApiParameterMappingManagement={ApiParameterMappingManagement}
       PaymentManagement={PaymentManagement}
       RechargeConfigManagement={RechargeConfigManagement}
       GenerationRecords={GenerationRecords}

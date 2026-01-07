@@ -33,6 +33,9 @@ export interface Site {
   status: 'active' | 'disabled'; // 状态：active-启用，disabled-禁用
   description?: string; // 站点描述
   manual?: string; // 使用手册
+  userAgreement?: string; // 用户协议
+  privacyPolicy?: string; // 隐私政策
+  copyright?: string; // 版权信息
   createdAt: string;
   updatedAt: string;
 }
@@ -138,8 +141,27 @@ export interface ApiCategory {
   platforms: ApiPlatform[];
 }
 
-export interface ApiPlatform {
+export interface ApiParameterMapping {
   id: string;
+  platformId: string;
+  modelName?: string;
+  internalParam: string;
+  targetParam: string;
+  fixedValue?: string;
+  defaultValue?: string;
+  description?: string;
+  mappingType: 1 | 2; // 1: Field Mapping, 2: Fixed Value
+  isRequired: boolean;
+  paramLocation: 'header' | 'query' | 'body';
+  paramType: 'string' | 'integer' | 'boolean' | 'json';
+  deleted: boolean;
+  siteId: SiteId;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiPlatform {
+  id: string | number;
   name: string;
   alias?: string;
   apiKey: string;
@@ -149,8 +171,30 @@ export interface ApiPlatform {
   nodeInfo?: string;
   interfaces: ApiInterface[];
   icon?: string;
-  supportedModels?: string; // 支持的模型列表（以#号分割的字符串，例如：flux-1.0#flux-2.0）
-  type?: string; // API类型：image_analysis, video_analysis, txt2img, img2img, txt2video, img2video, voice_clone
+  supportedModels?: string; // 支持的模型列表（JSON string of ModelConfig[] or old format string）
+  type?: string; // API类型：image_analysis, video_analysis, txt2img, img2img, txt2video, img2video, upload_character, voice_clone, prompt_optimize
+}
+
+export interface ModelCostRule {
+  id: string;
+  resolution?: string;
+  ratio?: string;
+  duration?: number;
+  cost: number;
+}
+
+export interface ModelConfig {
+  id: string;
+  name: string;
+  label?: string;
+  type: 'image' | 'video' | 'chat' | 'analysis';
+  resolutions: string[];
+  ratios: string[];
+  durations?: number[];
+  quantities?: number[];
+  costRules: ModelCostRule[];
+  defaultCost: number;
+  chartProfile?: string;
 }
 
 export interface MenuConfig {

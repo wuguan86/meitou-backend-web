@@ -1,35 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer, AreaChart, Area, Cell
 } from 'recharts';
 import { User, Search, ArrowRight, Coins } from 'lucide-react';
 import CategoryTabs from '../common/CategoryTabs';
+import { SITES, SITE_NAMES, SiteId } from '../../constants/sites';
+import { getStats, getTrend, getRanking, DashboardParams } from '../../api/dashboard';
 
 // Dashboard 组件 - 数据概览页面
 const Dashboard = () => {
-  const [activeCategory, setActiveCategory] = useState('medical'); // 当前选中的分类
+  const [activeCategory, setActiveCategory] = useState<SiteId>(SITES.MEDICAL); // 当前选中的分类
   const [timeRange, setTimeRange] = useState('week'); // 时间范围
   const [customDates, setCustomDates] = useState({ start: '', end: '' }); // 自定义日期范围
   
-  // 趋势数据
-  const trendData = [
-    { date: '10-24', merchants: 14, consumption: 9200 },
-    { date: '10-25', merchants: 16, consumption: 10400 },
-    { date: '10-26', merchants: 22, consumption: 8800 },
-    { date: '10-27', merchants: 18, consumption: 11200 },
-    { date: '10-28', merchants: 20, consumption: 9600 },
-    { date: '10-29', merchants: 15, consumption: 7400 },
-    { date: '10-30', merchants: 21, consumption: 10200 }
-  ];
+  const [stats, setStats] = useState({
+    totalBalance: 0,
+    totalUsers: 0,
+    activeUsers: 0,
+    totalConsumption: 0
+  });
   
-  // 排名数据
-  const rankingData = [
-    { name: '美好医美', value: 5200 },
-    { name: '张氏诊所', value: 4500 },
-    { name: '康康体检', value: 3800 },
-    { name: '爱美中心', value: 3500 },
-    { name: '美莱整形', value: 2400 }
-  ];
+  const [trendData, setTrendData] = useState<any[]>([]);
+  const [rankingData, setRankingData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params: DashboardParams = {
+        siteId: activeCategory,
+        timeRange,
+        startDate: customDates.start,
+        endDate: customDates.end
+      };
+
+      const [statsRes, trendRes, rankingRes] = await Promise.all([
+        getStats(params),
+        getTrend(params),
+        getRanking(params)
+      ]);
+
+      // api/index.ts 中的 request 拦截器已经解包了 response.data.data
+      // 所以这里直接获取返回的数据对象
+      if (statsRes) {
+        setStats(statsRes);
+      }
+      if (trendRes && trendRes.trendData) {
+        setTrendData(trendRes.trendData);
+      }
+      if (rankingRes && rankingRes.rankingData) {
+        setRankingData(rankingRes.rankingData);
+      }
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeCategory, timeRange, customDates]);
+
+  useEffect(() => {
+    // If custom range is selected, only fetch if both dates are present
+    if (timeRange === 'custom' && (!customDates.start || !customDates.end)) {
+      return;
+    }
+    fetchData();
+  }, [fetchData, timeRange, customDates, activeCategory]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -82,7 +117,7 @@ const Dashboard = () => {
         <div className="sm:col-span-2 lg:col-span-1 bg-gradient-to-br from-blue-500 to-blue-700 p-4 sm:p-6 rounded-xl text-white relative overflow-hidden shadow-lg shadow-blue-200">
           <p className="text-[10px] sm:text-xs font-medium opacity-80 mb-2">平台积分总余额</p>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold tracking-tight">2,458,200</span>
+            <span className="text-2xl sm:text-3xl font-extrabold tracking-tight">{stats.totalBalance.toLocaleString()}</span>
             <span className="text-[9px] sm:text-[10px] bg-white/20 px-1 sm:px-1.5 py-0.5 rounded font-bold">总池</span>
           </div>
           <Coins size={60} className="sm:w-20 sm:h-20 absolute -right-2 sm:-right-4 -bottom-2 sm:-bottom-4 opacity-10" />
@@ -93,10 +128,10 @@ const Dashboard = () => {
             <User size={20} className="sm:w-6 sm:h-6"/>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] sm:text-xs text-slate-400 mb-1">医美类 商家总数</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 mb-1">{SITE_NAMES[activeCategory]} 商家总数</p>
             <div className="flex items-center gap-2">
-              <span className="text-xl sm:text-2xl font-bold text-slate-800">324</span>
-              <span className="text-[9px] sm:text-[10px] text-green-500 font-bold bg-green-50 px-1 rounded">+5%</span>
+              <span className="text-xl sm:text-2xl font-bold text-slate-800">{stats.totalUsers.toLocaleString()}</span>
+              {/* <span className="text-[9px] sm:text-[10px] text-green-500 font-bold bg-green-50 px-1 rounded">+5%</span> */}
             </div>
           </div>
         </div>
@@ -108,8 +143,8 @@ const Dashboard = () => {
           <div className="min-w-0 flex-1">
             <p className="text-[10px] sm:text-xs text-slate-400 mb-1">产生消耗商家数</p>
             <div className="flex items-center gap-2">
-              <span className="text-xl sm:text-2xl font-bold text-slate-800">280</span>
-              <span className="text-[9px] sm:text-[10px] text-blue-500 font-bold">85% 活跃</span>
+              <span className="text-xl sm:text-2xl font-bold text-slate-800">{stats.activeUsers.toLocaleString()}</span>
+              {/* <span className="text-[9px] sm:text-[10px] text-blue-500 font-bold">85% 活跃</span> */}
             </div>
           </div>
         </div>
@@ -121,7 +156,7 @@ const Dashboard = () => {
           <div className="min-w-0 flex-1">
             <p className="text-[10px] sm:text-xs text-slate-400 mb-1">该类目总消耗</p>
             <div className="flex items-center gap-2">
-              <span className="text-xl sm:text-2xl font-bold text-slate-800">125,400</span>
+              <span className="text-xl sm:text-2xl font-bold text-slate-800">{stats.totalConsumption.toLocaleString()}</span>
               <span className="text-[9px] sm:text-[10px] text-orange-500 font-bold">积分</span>
             </div>
           </div>
@@ -132,13 +167,13 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* 每日数据趋势 */}
         <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-100 card-shadow h-[300px] sm:h-[350px] lg:h-[400px]">
-          <h4 className="font-bold text-sm sm:text-base text-slate-800 mb-4 sm:mb-6 lg:mb-8">每日数据趋势 (医美)</h4>
+          <h4 className="font-bold text-sm sm:text-base text-slate-800 mb-4 sm:mb-6 lg:mb-8">每日数据趋势 ({SITE_NAMES[activeCategory]})</h4>
           <ResponsiveContainer width="100%" height="80%">
             <AreaChart data={trendData}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
-              <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} domain={[0, 24]} />
-              <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} domain={[0, 12000]} />
+              <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
+              <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
               <ChartTooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}} />
               <Area yAxisId="left" type="monotone" dataKey="merchants" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.05} strokeWidth={2} name="新增商家" />
               <Area yAxisId="right" type="monotone" dataKey="consumption" stroke="#f97316" fill="#f97316" fillOpacity={0.05} strokeWidth={2} name="消耗量" />
@@ -160,10 +195,11 @@ const Dashboard = () => {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={rankingData} layout="vertical" margin={{ left: 20 }}>
                 <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#475569', fontWeight: 600}} />
+                <YAxis dataKey="name" type="category" width={80} axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#475569', fontWeight: 600}} />
                 <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={24}>
                   {rankingData.map((_, i) => <Cell key={i} fillOpacity={1 - i * 0.15} />)}
                 </Bar>
+                <ChartTooltip />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -174,4 +210,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

@@ -32,6 +32,7 @@ interface AdminLayoutProps {
   InvitationManagement?: React.ComponentType;
   SiteManagement?: React.ComponentType;
   AccountManagement?: React.ComponentType;
+  ApiParameterMappingManagement?: React.ComponentType;
 }
 
 const AdminLayout = ({ 
@@ -46,7 +47,8 @@ const AdminLayout = ({
   GenerationRecords,
   InvitationManagement,
   SiteManagement,
-  AccountManagement
+  AccountManagement,
+  ApiParameterMappingManagement
 }: AdminLayoutProps) => {
   const [activeTab, setActiveTab] = useState<NavSection>('dashboard'); // 当前激活的标签页
   const [sidebarOpen, setSidebarOpen] = useState(true); // 侧边栏是否展开（桌面端）
@@ -81,6 +83,8 @@ const AdminLayout = ({
         return MenuManagement ? <MenuManagement /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
       case 'api': 
         return ApiManagement ? <ApiManagement /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
+      case 'api_mapping':
+        return ApiParameterMappingManagement ? <ApiParameterMappingManagement /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
       case 'payment': 
         return PaymentManagement ? <PaymentManagement /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
       case 'recharge_config': 
@@ -197,7 +201,7 @@ const AdminLayout = ({
                               : 'hover:text-white hover:bg-sidebar-hover'
                           }`}
                         >
-                          {getSubIcon(child.id)}
+                          {child.icon}
                           <span className="whitespace-nowrap">{child.label}</span>
                         </button>
                       ))}

@@ -53,7 +53,15 @@ const request = async <T>(
 
       // 处理 500 系统错误
       if (response.status >= 500) {
-        const errorMsg = '系统内部错误，请联系管理员';
+        let errorMsg = '系统内部错误，请联系管理员';
+        try {
+          const errorData = await response.json();
+          if (errorData.message || errorData.msg) {
+            errorMsg = errorData.message || errorData.msg;
+          }
+        } catch {
+          // 忽略解析错误，使用默认消息
+        }
         message.error(errorMsg);
         throw new Error(errorMsg);
       }

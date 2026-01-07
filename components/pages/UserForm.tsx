@@ -24,33 +24,36 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
   return (
     <div className="space-y-4">
       {/* 邮箱输入 */}
-      <FormItem label="邮箱" required>
+      <FormItem label="邮箱">
         <input 
           name="email" 
           value={formData.email || ''} 
           onChange={handleChange} 
           className="w-full p-2 border rounded" 
           autoComplete="off"
+          placeholder="选填"
         />
       </FormItem>
       {/* 用户名输入 */}
-      <FormItem label="用户名" required>
+      <FormItem label="用户名">
         <input 
           name="username" 
           value={formData.username || ''} 
           onChange={handleChange} 
           className="w-full p-2 border rounded" 
           autoComplete="off"
+          placeholder="选填，不填则自动生成"
         />
       </FormItem>
       {/* 手机号输入 */}
-      <FormItem label="手机号">
+      <FormItem label="手机号" required>
         <input 
           name="phone" 
           value={formData.phone || ''} 
           onChange={handleChange} 
           className="w-full p-2 border rounded" 
           autoComplete="off"
+          placeholder="必填"
         />
       </FormItem>
       {/* 登录密码输入 */}
@@ -86,7 +89,13 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
       <div className="flex justify-end gap-4 pt-4 border-t">
         <button onClick={onCancel}>取消</button>
         <button 
-          onClick={() => onSave(formData)} 
+          onClick={() => {
+            if (!formData.phone || !formData.phone.trim()) {
+              alert('请输入手机号');
+              return;
+            }
+            onSave(formData);
+          }} 
           className="bg-blue-600 text-white px-4 py-2 rounded-lg"
         >
           保存
