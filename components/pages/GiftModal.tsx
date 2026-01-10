@@ -12,7 +12,6 @@ interface GiftModalProps {
 
 const GiftModal = ({ user, onClose, onConfirm }: GiftModalProps) => {
   const [points, setPoints] = useState(100); // 积分数量
-  const [validity, setValidity] = useState('1_month'); // 有效期
   
   if (!user) return null; // 没有用户数据时不显示
   
@@ -27,19 +26,6 @@ const GiftModal = ({ user, onClose, onConfirm }: GiftModalProps) => {
             onChange={e => setPoints(parseInt(e.target.value))} 
             className="w-full p-2 border rounded" 
           />
-        </FormItem>
-        {/* 有效期选择 */}
-        <FormItem label="有效期">
-          <select 
-            value={validity} 
-            onChange={e => setValidity(e.target.value)} 
-            className="w-full p-2 border rounded bg-white"
-          >
-            <option value="1_month">1个月</option>
-            <option value="3_months">3个月</option>
-            <option value="1_year">1年</option>
-            <option value="permanent">永久有效</option>
-          </select>
         </FormItem>
         {/* 提示信息 */}
         <div className="bg-orange-50 p-3 rounded text-orange-800 text-sm">

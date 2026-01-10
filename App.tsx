@@ -1831,6 +1831,23 @@ const PaymentConfigModal = ({
               />
             </FormItem>
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <FormItem label="平台公钥ID">
+              <input 
+                className="w-full p-2 border rounded" 
+                value={formData.wechatPayPublicKeyId || ''}
+                onChange={e => setFormData({...formData, wechatPayPublicKeyId: e.target.value})}
+              />
+            </FormItem>
+            <FormItem label="平台公钥 (PEM)">
+              <textarea 
+                className="w-full p-2 border rounded h-24 font-mono text-xs" 
+                placeholder="已加密，如需修改请直接输入"
+                value={formData.wechatPayPublicKey || ''}
+                onChange={e => setFormData({...formData, wechatPayPublicKey: e.target.value})}
+              />
+            </FormItem>
+          </div>
           <FormItem label="回调地址 (Notify URL)">
              <input 
                className="w-full p-2 border rounded" 

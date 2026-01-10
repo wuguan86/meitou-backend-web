@@ -35,6 +35,7 @@ const convertConfig = (config: RechargeConfigResponse): RechargeConfig => {
   return {
     ...config,
     id: String(config.id), // 将number转换为string
+    siteId: config.siteId as SiteId,
   };
 };
 

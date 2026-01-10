@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { UserAsset } from '../types';
 import * as assetAPI from '../api/asset';
+import { SiteId } from '../constants/sites';
 
 // useAssets Hook - 管理资产列表数据
 export const useAssets = (
-  activeCategory: string, 
+  activeCategory: SiteId, 
   activeTab: 'all' | 'image' | 'video', 
   search: string
 ) => {

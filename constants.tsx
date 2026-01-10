@@ -90,7 +90,7 @@ export const API_TYPES = [
   { id: 'img2img', name: '图生图', icon: 'ImageIcon', description: 'AI图像转换接口' },
   { id: 'txt2video', name: '文生视频', icon: 'Video', description: 'AI视频生成接口' },
   { id: 'img2video', name: '图生视频', icon: 'Video', description: 'AI视频转换接口' },
-  { id: 'upload_character', name: '上传角色', icon: 'Upload', description: '角色上传接口' },
+  { id: 'upload_character', name: '从原视频创建角色', icon: 'Upload', description: '角色上传接口' },
   { id: 'voice_clone', name: '声音克隆', icon: 'Music', description: 'AI声音克隆接口' },
   { id: 'prompt_optimize', name: '提示词优化', icon: 'MessageSquare', description: '提示词优化接口' },
 ] as const;
@@ -159,6 +159,6 @@ export const STANDARD_MENUS: MenuConfig[] = [
   { id: 'txt2video', label: '文生视频', code: 'txt2video', isVisible: true },
   { id: 'img2img', label: '图生图', code: 'img2img', isVisible: true },
   { id: 'img2video', label: '图生视频', code: 'img2video', isVisible: true },
-  { id: 'upload_character', label: '上传角色', code: 'upload_character', isVisible: true },
+  { id: 'upload_character', label: '从原视频创建角色', code: 'upload_character', isVisible: true },
   { id: 'voice_clone', label: '声音克隆', code: 'voice_clone', isVisible: true },
 ];
