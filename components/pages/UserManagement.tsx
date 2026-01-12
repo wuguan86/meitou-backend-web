@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Edit, Trash2, Gift } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Gift, Ban, CheckCircle } from 'lucide-react';
 import { message, Pagination, Modal as AntModal } from 'antd';
 import { User } from '../../types';
 import * as userAPI from '../../api/user';
@@ -75,6 +75,29 @@ const UserManagement = () => {
     }
   };
 
+  // 切换用户状态（封禁/解封）
+  const handleToggleStatus = async (user: User) => {
+    const isSuspended = user.status === 'suspended';
+    const newStatus = isSuspended ? 'active' : 'suspended';
+    const actionName = isSuspended ? '解封' : '封禁';
+    
+    AntModal.confirm({
+      title: `确认${actionName}`,
+      content: `确认${actionName}该用户吗?`,
+      onOk: async () => {
+        try {
+          // 调用 updateUser 接口更新状态
+          await userAPI.updateUser(user.id.toString(), activeSiteId, { ...user, status: newStatus });
+          await loadUsers(); // 重新加载列表
+          message.success(`${actionName}成功`);
+        } catch (err: any) {
+          console.error(`${actionName}失败:`, err);
+          message.error(`${actionName}失败: ` + (err.message || '未知错误'));
+        }
+      }
+    });
+  };
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 card-shadow flex flex-col h-[calc(100vh-140px)] sm:h-[calc(100vh-160px)] animate-fade-in">
       {/* 页面头部 */}
@@ -144,6 +167,13 @@ const UserManagement = () => {
                           <Gift size={14} className="sm:w-4 sm:h-4"/>
                         </button>
                         <button 
+                          onClick={() => handleToggleStatus(u)} 
+                          className={`p-1.5 sm:p-2 ${u.status === 'suspended' ? 'text-green-600 hover:bg-green-50' : 'text-rose-600 hover:bg-rose-50'} rounded`} 
+                          title={u.status === 'suspended' ? '解封用户' : '封禁用户'}
+                        >
+                          {u.status === 'suspended' ? <CheckCircle size={14} className="sm:w-4 sm:h-4"/> : <Ban size={14} className="sm:w-4 sm:h-4"/>}
+                        </button>
+                        <button 
                           onClick={() => setModal({ isOpen: true, user: u })} 
                           className="p-1.5 sm:p-2 text-blue-600 hover:bg-blue-50 rounded" 
                           title="编辑用户"
@@ -196,6 +226,13 @@ const UserManagement = () => {
                       title="赠送积分"
                     >
                       <Gift size={16}/>
+                    </button>
+                    <button 
+                      onClick={() => handleToggleStatus(u)} 
+                      className={`p-2 ${u.status === 'suspended' ? 'text-green-600 hover:bg-green-50' : 'text-rose-600 hover:bg-rose-50'} rounded`} 
+                      title={u.status === 'suspended' ? '解封用户' : '封禁用户'}
+                    >
+                      {u.status === 'suspended' ? <CheckCircle size={16}/> : <Ban size={16}/>}
                     </button>
                     <button 
                       onClick={() => setModal({ isOpen: true, user: u })} 

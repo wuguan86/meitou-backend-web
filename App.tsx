@@ -2369,6 +2369,23 @@ const SiteManagement = () => {
   const [userAgreement, setUserAgreement] = useState(''); // 用户协议
   const [privacyPolicy, setPrivacyPolicy] = useState(''); // 隐私政策
   const [copyright, setCopyright] = useState(''); // 版权信息
+  const [footerCopyright, setFooterCopyright] = useState(''); // 底部版权信息
+  const [logo, setLogo] = useState(''); // Logo
+  const [websiteName, setWebsiteName] = useState(''); // 网站名称
+  const [loginSubtext, setLoginSubtext] = useState(''); // 登录框小文字
+  const [websiteTitle, setWebsiteTitle] = useState(''); // 网站Title
+  const [favicon, setFavicon] = useState(''); // Favicon
+
+  const handleImageUpload = async (file: File, type: 'logo' | 'favicon') => {
+    try {
+      const url = await uploadAPI.uploadImage(file, 'site-assets/');
+      if (type === 'logo') setLogo(url);
+      else setFavicon(url);
+      message.success('上传成功');
+    } catch (err: any) {
+      message.error('上传失败: ' + err.message);
+    }
+  };
   
   // 加载站点列表
   const loadSites = async () => {
@@ -2394,6 +2411,12 @@ const SiteManagement = () => {
     setUserAgreement(site.userAgreement || '');
     setPrivacyPolicy(site.privacyPolicy || '');
     setCopyright(site.copyright || '');
+    setFooterCopyright(site.footerCopyright || '');
+    setLogo(site.logo || '');
+    setWebsiteName(site.websiteName || '');
+    setLoginSubtext(site.loginSubtext || '');
+    setWebsiteTitle(site.websiteTitle || '');
+    setFavicon(site.favicon || '');
   };
   
   // 保存修改
@@ -2411,7 +2434,13 @@ const SiteManagement = () => {
         manual: manual,
         userAgreement: userAgreement,
         privacyPolicy: privacyPolicy,
-        copyright: copyright
+        copyright: copyright,
+        footerCopyright: footerCopyright,
+        logo: logo,
+        websiteName: websiteName,
+        loginSubtext: loginSubtext,
+        websiteTitle: websiteTitle,
+        favicon: favicon
       });
       message.success('站点信息更新成功');
       await loadSites();
@@ -2421,6 +2450,12 @@ const SiteManagement = () => {
       setUserAgreement('');
       setPrivacyPolicy('');
       setCopyright('');
+      setFooterCopyright('');
+      setLogo('');
+      setWebsiteName('');
+      setLoginSubtext('');
+      setWebsiteTitle('');
+      setFavicon('');
     } catch (err: any) {
       message.error('更新站点失败: ' + (err.message || '未知错误'));
     }
@@ -2496,6 +2531,12 @@ const SiteManagement = () => {
           setUserAgreement('');
           setPrivacyPolicy('');
           setCopyright('');
+          setFooterCopyright('');
+          setLogo('');
+          setWebsiteName('');
+          setLoginSubtext('');
+          setWebsiteTitle('');
+          setFavicon('');
         }} 
         title="编辑站点信息"
         size="xl"
@@ -2529,15 +2570,71 @@ const SiteManagement = () => {
               onChange={e => setDomain(e.target.value)} 
             />
           </FormItem>
-          <FormItem label="版权信息">
+          <div className="grid grid-cols-2 gap-4">
+            <FormItem label="顶部标识/版本号">
+              <input 
+                type="text" 
+                className="w-full p-2 border rounded" 
+                placeholder="请输入顶部显示的版本号或标识"
+                value={copyright} 
+                onChange={e => setCopyright(e.target.value)} 
+              />
+            </FormItem>
+            <FormItem label="底部版权信息">
+              <input 
+                type="text" 
+                className="w-full p-2 border rounded" 
+                placeholder="请输入页面底部的版权声明"
+                value={footerCopyright} 
+                onChange={e => setFooterCopyright(e.target.value)} 
+              />
+            </FormItem>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+             <FormItem label="网站名称">
+              <input 
+                type="text" 
+                className="w-full p-2 border rounded" 
+                placeholder="请输入网站名称"
+                value={websiteName} 
+                onChange={e => setWebsiteName(e.target.value)} 
+              />
+            </FormItem>
+             <FormItem label="网站Title">
+              <input 
+                type="text" 
+                className="w-full p-2 border rounded" 
+                placeholder="请输入浏览器标题栏信息"
+                value={websiteTitle} 
+                onChange={e => setWebsiteTitle(e.target.value)} 
+              />
+            </FormItem>
+          </div>
+          <FormItem label="登录框Slogan">
             <input 
               type="text" 
               className="w-full p-2 border rounded" 
-              placeholder="请输入版权信息"
-              value={copyright} 
-              onChange={e => setCopyright(e.target.value)} 
+              placeholder="请输入登录框下方的文字"
+              value={loginSubtext} 
+              onChange={e => setLoginSubtext(e.target.value)} 
             />
           </FormItem>
+          <div className="grid grid-cols-2 gap-4">
+             <FormItem label="Logo">
+               <div className="flex flex-col gap-2">
+                  {logo && <img src={logo} className="h-10 object-contain border rounded bg-slate-50" />}
+                  <input type="file" accept="image/*" onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'logo')} className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+               </div>
+            </FormItem>
+             <FormItem label="Favicon">
+                <div className="flex flex-col gap-2">
+                  {favicon && <img src={favicon} className="h-8 w-8 object-contain border rounded bg-slate-50" />}
+                  <input type="file" accept="image/*" onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'favicon')} className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+               </div>
+            </FormItem>
+          </div>
+
           <FormItem label="使用手册">
             <textarea 
               className="w-full p-2 border rounded min-h-[80px]" 

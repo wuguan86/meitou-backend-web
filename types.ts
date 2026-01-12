@@ -30,12 +30,18 @@ export interface Site {
   name: string; // 站点名称（如：医美类、电商类、生活服务类）
   code: string; // 站点代码（如：medical、ecommerce、life）
   domain: string; // 域名（用于识别站点，如：medical.example.com）
+  logo?: string; // Logo图片地址
+  websiteName?: string; // 网站名称
+  loginSubtext?: string; // 登录框小文字
+  websiteTitle?: string; // 网站Title信息
+  favicon?: string; // Favicon图标地址
   status: 'active' | 'disabled'; // 状态：active-启用，disabled-禁用
   description?: string; // 站点描述
   manual?: string; // 使用手册
   userAgreement?: string; // 用户协议
   privacyPolicy?: string; // 隐私政策
-  copyright?: string; // 版权信息
+  copyright?: string; // 版权信息(顶部)
+  footerCopyright?: string; // 底部版权信息
   createdAt: string;
   updatedAt: string;
 }
