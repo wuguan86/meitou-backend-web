@@ -70,6 +70,7 @@ import StatusBadge from './components/common/StatusBadge';
 import CategoryTabs from './components/common/CategoryTabs';
 import FormItem from './components/common/FormItem';
 import { ModelManager } from './components/common/ModelManager';
+import { SecureImage } from './components/common/SecureImage';
 
 // 导入已提取的页面组件
 import Dashboard from './components/pages/Dashboard';
@@ -100,14 +101,20 @@ const SquareManagement = () => {
   const [search, setSearch] = useState('');
   const [editingLikeId, setEditingLikeId] = useState<string | null>(null);
   const [editLikeValue, setEditLikeValue] = useState<string>('');
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 });
   const [previewItem, setPreviewItem] = useState<PublishedContent | null>(null);
   
-  const loadContents = async (page = 1, size = 10) => {
+  const loadContents = async (page = 1, size = 20, append = false) => {
+    // Prevent multiple loads
+    if (loading && append) return; 
     setLoading(true);
     try {
       const result = await squareAPI.getList(page, size, activeSiteId, activeTab === 'all' ? undefined : activeTab, search || undefined);
-      setContents(result.records);
+      if (append) {
+        setContents(prev => [...prev, ...result.records]);
+      } else {
+        setContents(result.records);
+      }
       setPagination({
         current: result.current,
         pageSize: result.size,
@@ -121,17 +128,22 @@ const SquareManagement = () => {
   };
   
   useEffect(() => {
-    loadContents(1, pagination.pageSize);
+    loadContents(1, pagination.pageSize, false);
   }, [activeSiteId, activeTab]);
   
-  const handlePageChange = (page: number, pageSize: number) => {
-    loadContents(page, pageSize);
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 50 && !loading && contents.length < pagination.total) {
+       loadContents(pagination.current + 1, pagination.pageSize, true);
+    }
   };
   
   const togglePin = async (id:string) => {
     try {
       await squareAPI.togglePin(id, activeSiteId);
-      await loadContents(pagination.current, pagination.pageSize);
+      // Optimistic update
+      setContents(prev => prev.map(item => item.id === id ? { ...item, isPinned: !item.isPinned } : item));
+      message.success('操作成功');
     } catch (err: any) {
       message.error('操作失败: ' + (err.message || '未知错误'));
     }
@@ -140,7 +152,11 @@ const SquareManagement = () => {
   const toggleStatus = async (id:string) => {
     try {
       await squareAPI.toggleStatus(id, activeSiteId);
-      await loadContents(pagination.current, pagination.pageSize);
+      // Optimistic update
+      setContents(prev => prev.map(item => 
+          item.id === id ? { ...item, status: item.status === 'published' ? 'hidden' : 'published' } : item
+      ));
+      message.success('操作成功');
     } catch (err: any) {
       message.error('操作失败: ' + (err.message || '未知错误'));
     }
@@ -153,7 +169,8 @@ const SquareManagement = () => {
       onOk: async () => {
         try {
           await squareAPI.deleteContent(id, activeSiteId);
-          await loadContents(pagination.current, pagination.pageSize);
+          setContents(prev => prev.filter(item => item.id !== id));
+          setPagination(prev => ({ ...prev, total: prev.total - 1 }));
           message.success('删除成功');
         } catch (err: any) {
           message.error('删除失败: ' + (err.message || '未知错误'));
@@ -224,8 +241,8 @@ const SquareManagement = () => {
               ))}
           </div>
       </div>
-      <div className="flex-1 overflow-auto p-6 flex flex-col">
-        {loading ? (
+      <div className="flex-1 overflow-auto p-6 flex flex-col" onScroll={handleScroll}>
+        {loading && contents.length === 0 ? (
           <div className="flex items-center justify-center h-64 text-slate-400">加载中...</div>
         ) : contents.length === 0 ? (
           <div className="flex items-center justify-center h-64 text-slate-400">暂无数据</div>
@@ -236,7 +253,7 @@ const SquareManagement = () => {
             <div key={item.id} className="break-inside-avoid group relative border rounded-xl shadow-sm hover:shadow-lg transition-all bg-white overflow-hidden mb-6">
                 {item.isPinned && <div className="absolute top-2 left-2 bg-yellow-400 text-white p-1 rounded-md shadow-sm z-10"><Pin size={12} fill="currentColor"/></div>}
                 <div className="bg-slate-100 relative cursor-pointer" onClick={() => setPreviewItem(item)}>
-                    <img src={item.thumbnail || item.contentUrl} className="w-full h-auto object-cover block" />
+                    <SecureImage src={item.thumbnail || item.contentUrl} className="w-full h-auto object-cover block" />
                     {item.type === 'video' && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Play className="text-white drop-shadow-md" fill="currentColor"/></div>}
                 </div>
                 <div className="p-3">
@@ -289,6 +306,12 @@ const SquareManagement = () => {
             </div>
             ))}
           </div>
+          {loading && contents.length > 0 && (
+             <div className="flex justify-center py-4 text-slate-400 text-sm">加载中...</div>
+          )}
+          {!loading && contents.length >= pagination.total && contents.length > 0 && (
+             <div className="flex justify-center py-4 text-slate-300 text-xs">没有更多数据了</div>
+          )}
           </>
         )}
       </div>
@@ -307,7 +330,7 @@ const SquareManagement = () => {
                  {previewItem.type === 'video' ? (
                      <video src={previewItem.contentUrl} controls className="max-w-full max-h-[80vh]" autoPlay />
                  ) : (
-                     <img src={previewItem.contentUrl} className="max-w-full max-h-[80vh] object-contain" />
+                     <SecureImage src={previewItem.contentUrl} className="max-w-full max-h-[80vh] object-contain" />
                  )}
                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 text-white">
                     <h3 className="font-bold text-lg">{previewItem.title}</h3>
@@ -400,7 +423,7 @@ const MarketingManagement = () => {
           <div className="flex-1 overflow-auto p-6 space-y-4">
             {filteredAds.map(ad => (
                 <div key={ad.id} className="border rounded-lg p-4 flex items-center gap-6 hover:bg-slate-50 transition-colors">
-                <div className="w-32 h-16 bg-slate-100 rounded-md overflow-hidden shrink-0"><img src={ad.imageUrl} className="w-full h-full object-cover"/></div>
+                <div className="w-32 h-16 bg-slate-100 rounded-md overflow-hidden shrink-0"><SecureImage src={ad.imageUrl} className="w-full h-full object-cover"/></div>
                 <div className="flex-1">
                     <div className="flex items-center gap-2">
                         <h4 className="font-bold text-slate-800">{ad.title}</h4>
@@ -428,7 +451,7 @@ const MarketingManagement = () => {
                   <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:bg-slate-50 cursor-pointer flex flex-col items-center justify-center text-slate-400 relative overflow-hidden group h-48">
                       {csConfig.qrCodeUrl ? (
                           <>
-                            <img src={csConfig.qrCodeUrl} className="h-full object-contain" />
+                            <SecureImage src={csConfig.qrCodeUrl} className="h-full object-contain" />
                             <p className="text-xs text-blue-600 mt-2">
                               {csUploading ? '上传中...' : '点击重新上传'}
                             </p>
@@ -709,7 +732,7 @@ const AdEditorModal = ({ ad, existingAds = [], onClose, onSave }: { ad: Partial<
               {/* 如果已有图片，显示预览 */}
               {formData.imageUrl ? (
                 <>
-                  <img src={formData.imageUrl} alt="广告图片预览" className="max-w-full max-h-64 object-contain mb-2" />
+                  <SecureImage src={formData.imageUrl} alt="广告图片预览" className="max-w-full max-h-64 object-contain mb-2" />
                   <p className="text-xs text-blue-600 mt-2">
                     {uploading ? '上传中...' : '点击重新上传'}
                   </p>
