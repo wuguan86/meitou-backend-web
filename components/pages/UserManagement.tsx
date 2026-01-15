@@ -23,6 +23,7 @@ const UserManagement = () => {
     isOpen: false, 
     user: null 
   }); // 赠送积分弹窗状态
+  const [giftLoading, setGiftLoading] = useState(false); // 赠送积分加载状态
   
   // 使用自定义 hook 获取用户数据
   const { users, loading, loadUsers, pagination, handlePageChange } = useUsers(activeSiteId, search);
@@ -66,12 +67,16 @@ const UserManagement = () => {
   // 赠送积分
   const handleGiftPoints = async (points: number) => {
     if (!giftModal.user) return;
+    setGiftLoading(true);
     try {
       await userAPI.giftPoints(giftModal.user.id.toString(), activeSiteId, points);
       await loadUsers(); // 重新加载列表
       setGiftModal({ isOpen: false, user: null });
+      message.success('赠送成功');
     } catch (err: any) {
       message.error('赠送积分失败: ' + (err.message || '未知错误'));
+    } finally {
+      setGiftLoading(false);
     }
   };
 
@@ -295,6 +300,7 @@ const UserManagement = () => {
           user={giftModal.user} 
           onClose={() => setGiftModal({ isOpen: false, user: null })} 
           onConfirm={handleGiftPoints} 
+          loading={giftLoading}
         />
       )}
     </div>
