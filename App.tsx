@@ -2015,6 +2015,12 @@ const GenerationRecords = () => {
   const [records, setRecords] = useState<GenerationRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [viewRecord, setViewRecord] = useState<GenerationRecord | null>(null);
+  const formatFailureReason = (reason?: string, maxLength = 24) => {
+    if (!reason) return '-';
+    const trimmed = reason.trim();
+    if (!trimmed) return '-';
+    return trimmed.length > maxLength ? `${trimmed.slice(0, maxLength)}…` : trimmed;
+  };
   
   // 加载生成记录
   const loadRecords = async (siteId: SiteId) => {
@@ -2046,13 +2052,25 @@ const GenerationRecords = () => {
           <div className="flex items-center justify-center h-64 text-slate-400">暂无数据</div>
         ) : (
           <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50 border-b"><tr><th className="px-6 py-3">时间</th><th className="px-6 py-3">用户</th><th className="px-6 py-3">类型</th><th className="px-6 py-3">模型</th><th className="px-6 py-3">状态</th><th className="px-6 py-3 text-right">操作</th></tr></thead>
+            <thead className="bg-slate-50 border-b"><tr><th className="px-6 py-3">时间</th><th className="px-6 py-3">用户</th><th className="px-6 py-3">类型</th><th className="px-6 py-3">模型</th><th className="px-6 py-3">状态</th><th className="px-6 py-3">失败原因</th><th className="px-6 py-3 text-right">操作</th></tr></thead>
             <tbody>{records.map(r => <tr key={r.id} className="border-b hover:bg-slate-50">
                <td className="px-6 py-4">{r.createdAt ? new Date(r.createdAt).toLocaleString() : '-'}</td>
                <td className="px-6 py-4">{r.username}</td>
                <td className="px-6 py-4"><span className="bg-slate-100 px-2 py-1 rounded text-xs font-bold text-slate-600">{r.type}</span></td>
                <td className="px-6 py-4">{r.model}</td>
                <td className="px-6 py-4"><StatusBadge status={r.status} /></td>
+               <td className="px-6 py-4">
+                 {r.status === 'failed' ? (
+                   <span
+                     className="inline-block max-w-[360px] truncate text-xs text-rose-600"
+                     title={r.failureReason || ''}
+                   >
+                     {formatFailureReason(r.failureReason)}
+                   </span>
+                 ) : (
+                   <span className="text-slate-300">-</span>
+                 )}
+               </td>
                <td className="px-6 py-4 text-right"><button onClick={() => setViewRecord(r)} className="text-blue-600 font-medium text-xs border border-blue-200 px-2 py-1 rounded bg-blue-50 hover:bg-blue-100">查看内容</button></td>
             </tr>)}</tbody>
           </table>
@@ -2060,6 +2078,12 @@ const GenerationRecords = () => {
       </div>
       <Modal isOpen={!!viewRecord} onClose={() => setViewRecord(null)} title="查看生成内容">
         <div className="space-y-4">
+          {viewRecord?.status === 'failed' && (
+            <div className="bg-rose-50 p-4 rounded-xl border border-rose-100">
+              <div className="text-xs font-bold text-rose-400 uppercase mb-1">失败原因</div>
+              <p className="text-sm text-rose-700 break-words">{viewRecord?.failureReason || '-'}</p>
+            </div>
+          )}
           <div className="bg-black rounded-xl overflow-hidden flex items-center justify-center min-h-[300px]">
              {viewRecord?.type.includes('video') ? <video src={viewRecord?.contentUrl} controls className="max-w-full max-h-[60vh]" /> : 
               viewRecord?.type.includes('voice') ? <audio src={viewRecord?.contentUrl} controls className="w-full p-10" /> :

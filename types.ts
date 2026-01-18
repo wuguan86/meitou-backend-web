@@ -98,6 +98,8 @@ export interface GenerationRecord {
   createdAt: string;
   siteId: SiteId; // 站点ID：1=医美类, 2=电商类, 3=生活服务类
   contentUrl?: string; 
+  failureReason?: string;
+  thumbnailUrl?: string;
 }
 
 export interface InvitationCode {
