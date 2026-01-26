@@ -93,6 +93,7 @@ export interface GenerationRecord {
   type: 'txt2img' | 'img2img' | 'txt2video' | 'img2video' | 'voice';
   model: string;
   prompt: string;
+  title?: string;
   cost: number;
   status: 'success' | 'failed' | 'processing';
   createdAt: string;

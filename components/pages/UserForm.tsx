@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { message } from 'antd';
 import { User } from '../../types';
 import FormItem from '../common/FormItem';
 
@@ -91,7 +92,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
         <button 
           onClick={() => {
             if (!formData.phone || !formData.phone.trim()) {
-              alert('请输入手机号');
+              message.error('请输入手机号');
               return;
             }
             onSave(formData);
