@@ -33,6 +33,7 @@ interface AdminLayoutProps {
   SiteManagement?: React.ComponentType;
   AccountManagement?: React.ComponentType;
   ApiParameterMappingManagement?: React.ComponentType;
+  MemberConfigManagement?: React.ComponentType;
 }
 
 const AdminLayout = ({ 
@@ -48,7 +49,8 @@ const AdminLayout = ({
   InvitationManagement,
   SiteManagement,
   AccountManagement,
-  ApiParameterMappingManagement
+  ApiParameterMappingManagement,
+  MemberConfigManagement
 }: AdminLayoutProps) => {
   const [activeTab, setActiveTab] = useState<NavSection>('dashboard'); // 当前激活的标签页
   const [sidebarOpen, setSidebarOpen] = useState(true); // 侧边栏是否展开（桌面端）
@@ -89,6 +91,8 @@ const AdminLayout = ({
         return PaymentManagement ? <PaymentManagement /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
       case 'recharge_config': 
         return RechargeConfigManagement ? <RechargeConfigManagement /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
+      case 'membership_package':
+        return MemberConfigManagement ? <MemberConfigManagement /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
       case 'gen_records': 
         return GenerationRecords ? <GenerationRecords /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
       case 'invitations': 

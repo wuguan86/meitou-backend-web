@@ -17,6 +17,7 @@ import {
   Server,
   GitBranch,
   MessageSquare,
+  Crown,
 } from 'lucide-react';
 import { ApiCategory, User, UserAsset, MarketingAd, GenerationRecord, InvitationCode, MenuConfig, ManualConfig, BackendAccount } from './types';
 
@@ -37,6 +38,7 @@ export const SIDEBAR_MENU = [
       { id: 'api_mapping', label: '参数映射管理', icon: <GitBranch size={14} /> },
       { id: 'payment', label: '支付管理', icon: <CreditCard size={14} /> },
       { id: 'recharge_config', label: '充值配置管理', icon: <Coins size={14} /> },
+      { id: 'membership_package', label: '会员配置管理', icon: <Crown size={14} /> },
       { id: 'gen_records', label: '生成记录', icon: <FileClock size={14} /> },
       { id: 'invitations', label: '邀请码管理', icon: <Ticket size={14} /> },
       { id: 'sites', label: '站点管理', icon: <Server size={14} /> },

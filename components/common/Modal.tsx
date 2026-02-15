@@ -9,9 +9,10 @@ interface ModalProps {
   children?: React.ReactNode; // 子内容
   size?: 'md' | 'lg' | 'xl' | 'full'; // 弹窗尺寸
   maskClosable?: boolean; // 点击背景是否关闭，默认为 true
+  footer?: React.ReactNode; // 底部内容
 }
 
-const Modal = ({ isOpen, onClose, title, children, size = 'md', maskClosable = true }: ModalProps) => {
+const Modal = ({ isOpen, onClose, title, children, size = 'md', maskClosable = true, footer }: ModalProps) => {
   if (!isOpen) return null; // 不显示时返回空
   
   // 尺寸映射
@@ -53,6 +54,13 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md', maskClosable = t
         <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
           {children}
         </div>
+        
+        {/* 底部按钮区域 */}
+        {footer && (
+          <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex justify-end gap-3 shrink-0 rounded-b-xl">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );

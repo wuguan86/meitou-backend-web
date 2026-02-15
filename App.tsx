@@ -77,6 +77,7 @@ import Dashboard from './components/pages/Dashboard';
 import UserManagement from './components/pages/UserManagement';
 import AssetsManagement from './components/pages/AssetsManagement';
 import RechargeConfigManagement from './components/pages/RechargeConfigManagement';
+import MembershipPackageManagement from './components/pages/MembershipPackageManagement';
 import ApiParameterMappingManagement from './components/pages/ApiParameterMappingManagement';
 
 // 导入已提取的布局组件
@@ -2868,6 +2869,7 @@ function App() {
       ApiParameterMappingManagement={ApiParameterMappingManagement}
       PaymentManagement={PaymentManagement}
       RechargeConfigManagement={RechargeConfigManagement}
+      MemberConfigManagement={MembershipPackageManagement}
       GenerationRecords={GenerationRecords}
       InvitationManagement={InvitationManagement}
       SiteManagement={SiteManagement}

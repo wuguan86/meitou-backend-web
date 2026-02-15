@@ -223,9 +223,11 @@ export type NavSection =
   | 'api' 
   | 'payment' 
   | 'recharge_config'
+  | 'membership_package'
   | 'gen_records'
   | 'invitations' 
   | 'sites'
   | 'accounts'
   | 'roles'
-  | 'users';
+  | 'users'
+  | 'api_mapping';
