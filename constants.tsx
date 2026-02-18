@@ -18,6 +18,7 @@ import {
   GitBranch,
   MessageSquare,
   Crown,
+  Sparkles,
 } from 'lucide-react';
 import { ApiCategory, User, UserAsset, MarketingAd, GenerationRecord, InvitationCode, MenuConfig, ManualConfig, BackendAccount } from './types';
 
@@ -27,17 +28,27 @@ export const SIDEBAR_MENU = [
   { id: 'users', label: '用户管理', icon: <UsersIcon size={18} /> },
   { id: 'square', label: '广场管理', icon: <LayoutGrid size={18} /> },
   { id: 'assets', label: '资产管理', icon: <Images size={18} /> },
-  { id: 'marketing', label: '营销管理', icon: <Megaphone size={18} /> }, 
+  { 
+    id: 'marketing', 
+    label: '营销管理', 
+    icon: <Megaphone size={18} />,
+    children: [
+      { id: 'marketing_ads', label: '广告管理', icon: <Megaphone size={14} /> },
+      { id: 'marketing_popup', label: '弹窗管理', icon: <MessageSquare size={14} /> }
+    ]
+  }, 
   { 
     id: 'system', 
     label: '系统设置', 
     icon: <Settings size={18} />,
     children: [
       { id: 'menus', label: '菜单管理', icon: <Menu size={14} /> },
+      { id: 'prompt_helper', label: '提示词助手管理', icon: <Sparkles size={14} /> },
       { id: 'api', label: 'API接口管理', icon: <Key size={14} /> },
       { id: 'api_mapping', label: '参数映射管理', icon: <GitBranch size={14} /> },
       { id: 'payment', label: '支付管理', icon: <CreditCard size={14} /> },
       { id: 'recharge_config', label: '充值配置管理', icon: <Coins size={14} /> },
+      { id: 'recharge_records', label: '充值记录查询', icon: <FileClock size={14} /> },
       { id: 'membership_package', label: '会员配置管理', icon: <Crown size={14} /> },
       { id: 'gen_records', label: '生成记录', icon: <FileClock size={14} /> },
       { id: 'invitations', label: '邀请码管理', icon: <Ticket size={14} /> },

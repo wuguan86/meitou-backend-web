@@ -2,7 +2,7 @@
  * 营销管理 API
  */
 import { get, post, put, del } from './index';
-import { MarketingAd, ManualConfig } from '../types';
+import { MarketingAd, ManualConfig, PopupConfig } from '../types';
 import { SiteId } from '../constants/sites';
 
 // 获取广告列表
@@ -36,5 +36,33 @@ export const getManuals = async (): Promise<ManualConfig[]> => {
 // 更新手册配置
 export const updateManual = async (manual: ManualConfig): Promise<ManualConfig> => {
   return put<ManualConfig>('/admin/marketing/manuals', manual);
+};
+
+export const getPopupConfig = async (siteId: SiteId): Promise<PopupConfig> => {
+  return get<PopupConfig>(`/admin/marketing/popup?siteId=${siteId}`);
+};
+
+export const savePopupConfig = async (siteId: SiteId, config: Partial<PopupConfig>): Promise<PopupConfig> => {
+  return post<PopupConfig>(`/admin/marketing/popup?siteId=${siteId}`, config);
+};
+
+// 获取弹窗列表
+export const getPopupList = async (siteId: SiteId): Promise<PopupConfig[]> => {
+  return get<PopupConfig[]>(`/admin/marketing/popup?siteId=${siteId}`);
+};
+
+// 创建弹窗
+export const createPopup = async (siteId: SiteId, config: Partial<PopupConfig>): Promise<PopupConfig> => {
+  return post<PopupConfig>(`/admin/marketing/popup?siteId=${siteId}`, config);
+};
+
+// 更新弹窗
+export const updatePopup = async (id: string, siteId: SiteId, config: Partial<PopupConfig>): Promise<PopupConfig> => {
+  return put<PopupConfig>(`/admin/marketing/popup/${id}?siteId=${siteId}`, config);
+};
+
+// 删除弹窗
+export const deletePopup = async (id: string, siteId: SiteId): Promise<void> => {
+  await del(`/admin/marketing/popup/${id}?siteId=${siteId}`);
 };
 

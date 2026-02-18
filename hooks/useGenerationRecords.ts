@@ -7,13 +7,17 @@ import { SiteId, SITES } from '../constants/sites';
 export const useGenerationRecords = (siteId: SiteId = SITES.MEDICAL) => {
   const [records, setRecords] = useState<GenerationRecord[]>([]); // 生成记录列表
   const [loading, setLoading] = useState(false); // 加载状态
+  const [total, setTotal] = useState(0); // 总记录数
+  const [page, setPage] = useState(1); // 当前页码
+  const [size, setSize] = useState(10); // 每页数量
   
   // 加载生成记录
-  const loadRecords = async () => {
+  const loadRecords = async (currentPage: number = page, currentSize: number = size) => {
     setLoading(true);
     try {
-      const data = await generationAPI.getGenerationRecords(siteId);
-      setRecords(data);
+      const data = await generationAPI.getGenerationRecords(siteId, currentPage, currentSize);
+      setRecords(data.records);
+      setTotal(data.total);
     } catch (err: any) {
       console.error('加载记录失败:', err);
     } finally {
@@ -23,13 +27,26 @@ export const useGenerationRecords = (siteId: SiteId = SITES.MEDICAL) => {
   
   // 组件挂载时加载记录
   useEffect(() => {
-    loadRecords();
+    setPage(1);
+    loadRecords(1, size);
   }, [siteId]);
+
+  // 处理分页变化
+  const handlePageChange = (newPage: number, newSize?: number) => {
+    setPage(newPage);
+    if (newSize) {
+      setSize(newSize);
+    }
+    loadRecords(newPage, newSize || size);
+  };
   
   return {
     records, // 生成记录列表
     loading, // 加载状态
+    total, // 总记录数
+    page, // 当前页码
+    size, // 每页数量
+    handlePageChange, // 处理分页变化
     loadRecords // 重新加载函数
   };
 };
-

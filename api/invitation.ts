@@ -34,18 +34,23 @@ export const generateInvitations = async (params: {
   channel?: string;
   validStartDate?: string;
   validEndDate?: string;
+  type?: 'common' | 'membership';
+  packageId?: number;
+  duration?: number;
+  durationUnit?: string;
 }): Promise<InvitationCode[]> => {
   return post<InvitationCode[]>('/admin/invitations/generate', params);
 };
 
 // 更新邀请码
 export const updateInvitation = async (id: string, code: Partial<InvitationCode>): Promise<InvitationCode> => {
-  return put<InvitationCode>(`/admin/invitations/${id}`, code);
+  const url = code.siteId ? `/admin/invitations/${id}?siteId=${code.siteId}` : `/admin/invitations/${id}`;
+  return put<InvitationCode>(url, code);
 };
 
 // 删除邀请码
-export const deleteInvitation = async (id: string): Promise<void> => {
-  return del(`/admin/invitations/${id}`);
+export const deleteInvitation = async (id: string, siteId: SiteId): Promise<void> => {
+  return del(`/admin/invitations/${id}?siteId=${siteId}`);
 };
 
 

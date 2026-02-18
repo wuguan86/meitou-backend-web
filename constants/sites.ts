@@ -18,3 +18,7 @@ export const SITE_IDS = [SITES.MEDICAL, SITES.ECOMMERCE, SITES.LIFE] as const;
 
 export type SiteId = typeof SITE_IDS[number];
 
+// 获取站点名称
+export const getSiteName = (siteId: number): string => {
+  return SITE_NAMES[siteId] || '未知站点';
+};

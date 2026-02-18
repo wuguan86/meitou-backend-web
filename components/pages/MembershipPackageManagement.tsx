@@ -59,6 +59,7 @@ const MembershipPackageManagement: React.FC = () => {
         yearlyPrice: 0,
         yearlyDiscountPrice: 0,
         pointsReward: 0,
+        primaryColor: '',
       });
       setFeatures(['每月 800 积分', '生成高清视频', '快速通道生成']);
       setModal({ isOpen: true, pkg: null });
@@ -323,6 +324,24 @@ const MembershipPackageManagement: React.FC = () => {
                 className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                 placeholder="如：首购8.5折"
               />
+            </FormItem>
+
+            <FormItem label="主题色">
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={formData.primaryColor || '#000000'}
+                  onChange={e => setFormData({ ...formData, primaryColor: e.target.value })}
+                  className="w-10 h-10 p-1 border rounded-lg cursor-pointer"
+                />
+                <input
+                  type="text"
+                  value={formData.primaryColor || ''}
+                  onChange={e => setFormData({ ...formData, primaryColor: e.target.value })}
+                  className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="如：#A855F7"
+                />
+              </div>
             </FormItem>
             
             <div className="flex gap-4">

@@ -2,12 +2,12 @@
  * 生成记录 API
  */
 import { get, post, put, del } from './index';
-import { GenerationRecord } from '../types';
+import { GenerationRecord, PageResult } from '../types';
 import { SiteId } from '../constants/sites';
 
-// 获取生成记录列表（按站点ID）
-export const getGenerationRecords = async (siteId: SiteId): Promise<GenerationRecord[]> => {
-  return get<GenerationRecord[]>(`/admin/generation-records?siteId=${siteId}`);
+// 获取生成记录列表（按站点ID，分页）
+export const getGenerationRecords = async (siteId: SiteId, page: number = 1, size: number = 10): Promise<PageResult<GenerationRecord>> => {
+  return get<PageResult<GenerationRecord>>(`/admin/generation-records?siteId=${siteId}&page=${page}&size=${size}`);
 };
 
 // 获取生成记录详情

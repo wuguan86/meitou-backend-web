@@ -54,6 +54,7 @@ import * as assetAPI from './api/asset';
 import * as generationAPI from './api/generation';
 import * as paymentAPI from './api/payment';
 import * as invitationAPI from './api/invitation';
+import { getPackages, MembershipPackage } from './api/membershipPackage';
 import * as accountAPI from './api/account';
 import * as siteAPI from './api/site';
 import * as uploadAPI from './api/upload';
@@ -79,6 +80,9 @@ import AssetsManagement from './components/pages/AssetsManagement';
 import RechargeConfigManagement from './components/pages/RechargeConfigManagement';
 import MembershipPackageManagement from './components/pages/MembershipPackageManagement';
 import ApiParameterMappingManagement from './components/pages/ApiParameterMappingManagement';
+import PopupManagement from './components/pages/PopupManagement';
+import RechargeOrderManagement from './components/pages/RechargeOrderManagement';
+import PromptHelperManagement from './components/pages/PromptHelperManagement';
 
 // 导入已提取的布局组件
 import Login from './components/layout/Login';
@@ -2016,6 +2020,12 @@ const GenerationRecords = () => {
   const [records, setRecords] = useState<GenerationRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [viewRecord, setViewRecord] = useState<GenerationRecord | null>(null);
+  
+  // 分页状态
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [size, setSize] = useState(10);
+
   const formatFailureReason = (reason?: string, maxLength = 24) => {
     if (!reason) return '-';
     const trimmed = reason.trim();
@@ -2024,11 +2034,12 @@ const GenerationRecords = () => {
   };
   
   // 加载生成记录
-  const loadRecords = async (siteId: SiteId) => {
+  const loadRecords = async (siteId: SiteId, currentPage: number = page, currentSize: number = size) => {
     setLoading(true);
     try {
-      const data = await generationAPI.getGenerationRecords(siteId);
-      setRecords(data);
+      const data = await generationAPI.getGenerationRecords(siteId, currentPage, currentSize);
+      setRecords(data.records);
+      setTotal(data.total);
     } catch (err: any) {
       console.error('加载记录失败:', err);
       message.error('加载记录失败: ' + (err.message || '未知错误'));
@@ -2039,8 +2050,16 @@ const GenerationRecords = () => {
   
   // 当站点ID改变时加载记录
   useEffect(() => {
-    loadRecords(activeSiteId);
+    setPage(1);
+    loadRecords(activeSiteId, 1, size);
   }, [activeSiteId]);
+
+  // 处理翻页
+  const handlePageChange = (newPage: number, newSize: number) => {
+    setPage(newPage);
+    setSize(newSize);
+    loadRecords(activeSiteId, newPage, newSize);
+  };
   
   return (
     <div className="bg-white rounded-xl border card-shadow h-[calc(100vh-140px)] flex flex-col animate-fade-in">
@@ -2076,6 +2095,16 @@ const GenerationRecords = () => {
             </tr>)}</tbody>
           </table>
         )}
+      </div>
+      <div className="p-4 border-t flex justify-end">
+          <Pagination 
+            current={page} 
+            pageSize={size} 
+            total={total} 
+            onChange={handlePageChange} 
+            showSizeChanger 
+            showTotal={(total) => `共 ${total} 条`}
+          />
       </div>
       <Modal isOpen={!!viewRecord} onClose={() => setViewRecord(null)} title="查看生成内容">
         <div className="space-y-4">
@@ -2116,6 +2145,7 @@ const InvitationManagement = () => {
 
   const [generateModal, setGenerateModal] = useState(false);
   const [editModal, setEditModal] = useState<{isOpen: boolean, code: InvitationCode | null}>({isOpen: false, code: null});
+  const [packages, setPackages] = useState<MembershipPackage[]>([]);
   
   const [form, setForm] = useState({ 
       count: 1, 
@@ -2123,8 +2153,17 @@ const InvitationManagement = () => {
       maxUses: 1, 
       validStartDate: new Date().toISOString().split('T')[0], 
       validEndDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-      channel: ''
+      channel: '',
+      type: 'common' as 'common' | 'membership',
+      packageId: 0,
+      duration: 1,
+      durationUnit: 'month'
   });
+
+  // Load packages when site changes
+  useEffect(() => {
+    getPackages(activeSiteId).then(setPackages).catch(console.error);
+  }, [activeSiteId]);
 
   const loadCodes = async (
     page = pagination.current, 
@@ -2185,12 +2224,16 @@ const InvitationManagement = () => {
      try {
         await invitationAPI.generateInvitations({
           count: form.count,
-          points: form.points,
+          points: form.type === 'common' ? form.points : 0,
           maxUses: form.maxUses,
           siteId: activeSiteId,
           channel: form.channel || undefined,
           validStartDate: form.validStartDate,
-          validEndDate: form.validEndDate
+          validEndDate: form.validEndDate,
+          type: form.type,
+          packageId: form.type === 'membership' ? form.packageId : undefined,
+          duration: form.type === 'membership' ? form.duration : undefined,
+          durationUnit: form.type === 'membership' ? form.durationUnit : undefined
         });
         message.success('生成成功');
         loadCodes(1, pagination.pageSize);
@@ -2204,12 +2247,17 @@ const InvitationManagement = () => {
     if (!editModal.code) return;
     try {
       await invitationAPI.updateInvitation(editModal.code.id, {
+        siteId: editModal.code.siteId,
         channel: editModal.code.channel,
         status: editModal.code.status,
-        points: editModal.code.points,
+        points: editModal.code.type === 'membership' ? 0 : editModal.code.points,
         maxUses: editModal.code.maxUses,
-        validStartDate: editModal.code.validStartDate, // Note: backend expects LocalDate string
-        validEndDate: editModal.code.validEndDate
+        validStartDate: editModal.code.validStartDate,
+        validEndDate: editModal.code.validEndDate,
+        type: editModal.code.type,
+        packageId: editModal.code.packageId,
+        duration: editModal.code.duration,
+        durationUnit: editModal.code.durationUnit
       } as any);
       message.success('更新成功');
       loadCodes(pagination.current, pagination.pageSize);
@@ -2222,7 +2270,7 @@ const InvitationManagement = () => {
   const handleDelete = async (id: string) => {
     if (!window.confirm('确定要删除这个邀请码吗？')) return;
     try {
-      await invitationAPI.deleteInvitation(id);
+      await invitationAPI.deleteInvitation(id, activeSiteId);
       message.success('删除成功');
       loadCodes(pagination.current, pagination.pageSize);
     } catch (err: any) {
@@ -2321,11 +2369,19 @@ const InvitationManagement = () => {
         ) : (
           <>
             <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50 border-b"><tr><th className="px-6 py-3">邀请码</th><th className="px-6 py-3">渠道</th><th className="px-6 py-3">赠送积分</th><th className="px-6 py-3">已用/上限</th><th className="px-6 py-3">有效期</th><th className="px-6 py-3">创建时间</th><th className="px-6 py-3 text-right">操作</th></tr></thead>
+              <thead className="bg-slate-50 border-b"><tr><th className="px-6 py-3">邀请码</th><th className="px-6 py-3">渠道</th><th className="px-6 py-3">权益内容</th><th className="px-6 py-3">已用/上限</th><th className="px-6 py-3">有效期</th><th className="px-6 py-3">创建时间</th><th className="px-6 py-3 text-right">操作</th></tr></thead>
               <tbody>{codes.map(c => <tr key={c.id} className="border-b hover:bg-slate-50">
                  <td className="px-6 py-4 font-mono font-bold text-slate-700">{c.code} <button onClick={() => handleCopy(c.code)} className="ml-2 text-slate-400 hover:text-blue-600" title="复制邀请码"><Copy size={12}/></button></td>
                  <td className="px-6 py-4 text-xs text-slate-600">{c.channel || '-'}</td>
-                 <td className="px-6 py-4 font-bold text-orange-500">{c.points}</td>
+                 <td className="px-6 py-4 font-bold text-orange-500">
+  {c.type === 'membership' ? (
+    <span className="text-blue-600">
+      {packages.find(p => p.id === c.packageId)?.name || '未知套餐'} · {c.duration}{c.durationUnit === 'day' ? '天' : c.durationUnit === 'month' ? '个月' : '年'}
+    </span>
+  ) : (
+    <span>{c.points} 积分</span>
+  )}
+</td>
                  <td className="px-6 py-4">{c.usedCount}/{c.maxUses}</td>
                  <td className="px-6 py-4 text-xs text-slate-500">
                    <div>起: {c.validStartDate || '-'}</div>
@@ -2370,8 +2426,57 @@ const InvitationManagement = () => {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
              <FormItem label="生成数量 (个)"><input type="number" className="w-full p-2 border rounded" value={form.count} onChange={e => setForm({...form, count: parseInt(e.target.value)})} /></FormItem>
-             <FormItem label="单个赠送积分"><input type="number" className="w-full p-2 border rounded" value={form.points} onChange={e => setForm({...form, points: parseInt(e.target.value)})} /></FormItem>
+             <FormItem label="邀请码类型">
+               <select 
+                 className="w-full p-2 border rounded"
+                 value={form.type}
+                 onChange={e => setForm({...form, type: e.target.value as 'common' | 'membership'})}
+               >
+                 <option value="common">普通 (赠送积分)</option>
+                 <option value="membership">会员 (赠送权益)</option>
+               </select>
+             </FormItem>
           </div>
+          
+          {form.type === 'common' ? (
+            <div className="grid grid-cols-1">
+               <FormItem label="单个赠送积分"><input type="number" className="w-full p-2 border rounded" value={form.points} onChange={e => setForm({...form, points: parseInt(e.target.value)})} /></FormItem>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1">
+                 <FormItem label="会员套餐">
+                   <select 
+                     className="w-full p-2 border rounded"
+                     value={form.packageId}
+                     onChange={e => setForm({...form, packageId: parseInt(e.target.value)})}
+                   >
+                     <option value={0}>请选择套餐...</option>
+                     {packages.map(pkg => (
+                       <option key={pkg.id} value={pkg.id}>{pkg.name} ({pkg.levelCode})</option>
+                     ))}
+                   </select>
+                 </FormItem>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                 <FormItem label="时长">
+                   <input type="number" className="w-full p-2 border rounded" value={form.duration} onChange={e => setForm({...form, duration: parseInt(e.target.value)})} />
+                 </FormItem>
+                 <FormItem label="单位">
+                   <select 
+                     className="w-full p-2 border rounded"
+                     value={form.durationUnit}
+                     onChange={e => setForm({...form, durationUnit: e.target.value})}
+                   >
+                     <option value="day">天</option>
+                     <option value="month">月</option>
+                     <option value="year">年</option>
+                   </select>
+                 </FormItem>
+              </div>
+            </>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
              <FormItem label="使用次数限制"><input type="number" className="w-full p-2 border rounded" value={form.maxUses} onChange={e => setForm({...form, maxUses: parseInt(e.target.value)})} /></FormItem>
              <FormItem label="使用渠道"><input type="text" className="w-full p-2 border rounded" placeholder="例如：线下推广" value={form.channel} onChange={e => setForm({...form, channel: e.target.value})} /></FormItem>
@@ -2389,9 +2494,57 @@ const InvitationManagement = () => {
         {editModal.code && (
           <div className="space-y-4">
             <FormItem label="邀请码"><input type="text" className="w-full p-2 border rounded bg-slate-100 text-slate-500" value={editModal.code.code} disabled /></FormItem>
-            <div className="grid grid-cols-2 gap-4">
-               <FormItem label="赠送积分"><input type="number" className="w-full p-2 border rounded" value={editModal.code.points} onChange={e => setEditModal({isOpen: true, code: {...editModal.code!, points: parseInt(e.target.value)}})} /></FormItem>
-            </div>
+            
+            <FormItem label="邀请码类型">
+               <select 
+                 className="w-full p-2 border rounded bg-slate-100 text-slate-500 cursor-not-allowed"
+                 value={editModal.code.type || 'common'}
+                 disabled
+               >
+                 <option value="common">普通 (赠送积分)</option>
+                 <option value="membership">会员 (赠送权益)</option>
+               </select>
+            </FormItem>
+
+            {editModal.code.type === 'membership' ? (
+              <>
+                <div className="grid grid-cols-1">
+                   <FormItem label="会员套餐">
+                     <select 
+                       className="w-full p-2 border rounded"
+                       value={editModal.code.packageId || 0}
+                       onChange={e => setEditModal({isOpen: true, code: {...editModal.code!, packageId: parseInt(e.target.value)}})}
+                     >
+                       <option value={0}>请选择套餐...</option>
+                       {packages.map(pkg => (
+                         <option key={pkg.id} value={pkg.id}>{pkg.name} ({pkg.levelCode})</option>
+                       ))}
+                     </select>
+                   </FormItem>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                   <FormItem label="时长">
+                     <input type="number" className="w-full p-2 border rounded" value={editModal.code.duration || 1} onChange={e => setEditModal({isOpen: true, code: {...editModal.code!, duration: parseInt(e.target.value)}})} />
+                   </FormItem>
+                   <FormItem label="单位">
+                     <select 
+                       className="w-full p-2 border rounded"
+                       value={editModal.code.durationUnit || 'month'}
+                       onChange={e => setEditModal({isOpen: true, code: {...editModal.code!, durationUnit: e.target.value}})}
+                     >
+                       <option value="day">天</option>
+                       <option value="month">月</option>
+                       <option value="year">年</option>
+                     </select>
+                   </FormItem>
+                </div>
+              </>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                 <FormItem label="赠送积分"><input type="number" className="w-full p-2 border rounded" value={editModal.code.points} onChange={e => setEditModal({isOpen: true, code: {...editModal.code!, points: parseInt(e.target.value)}})} /></FormItem>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
                <FormItem label="使用次数限制"><input type="number" className="w-full p-2 border rounded" value={editModal.code.maxUses} onChange={e => setEditModal({isOpen: true, code: {...editModal.code!, maxUses: parseInt(e.target.value)}})} /></FormItem>
                <FormItem label="使用渠道"><input type="text" className="w-full p-2 border rounded" value={editModal.code.channel || ''} onChange={e => setEditModal({isOpen: true, code: {...editModal.code!, channel: e.target.value}})} /></FormItem>
@@ -2864,16 +3017,19 @@ function App() {
       SquareManagement={SquareManagement}
       AssetsManagement={AssetsManagement}
       MarketingManagement={MarketingManagement}
+      PopupManagement={PopupManagement}
       MenuManagement={MenuManagement}
       ApiManagement={ApiManagement}
       ApiParameterMappingManagement={ApiParameterMappingManagement}
       PaymentManagement={PaymentManagement}
       RechargeConfigManagement={RechargeConfigManagement}
+      RechargeRecordsManagement={RechargeOrderManagement}
       MemberConfigManagement={MembershipPackageManagement}
       GenerationRecords={GenerationRecords}
       InvitationManagement={InvitationManagement}
       SiteManagement={SiteManagement}
       AccountManagement={AccountManagement}
+      PromptHelperManagement={PromptHelperManagement}
     />
   ) : (
     <Login onLogin={handleLogin} />

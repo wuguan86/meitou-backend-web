@@ -86,6 +86,21 @@ export interface MarketingAd {
   isFullScreen?: boolean; 
 }
 
+export interface PopupConfig {
+  id: string;
+  siteId: SiteId;
+  name: string;
+  imageUrl: string;
+  startDate?: string;
+  endDate?: string;
+  isEnabled: boolean;
+  jumpType: 'external' | 'rich_text';
+  jumpLink?: string;
+  richTextContent?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface GenerationRecord {
   id: string;
   userId: string;
@@ -115,6 +130,10 @@ export interface InvitationCode {
   channel: string; 
   validStartDate?: string; 
   validEndDate?: string; 
+  type?: 'common' | 'membership';
+  packageId?: number;
+  duration?: number;
+  durationUnit?: string;
 }
 
 export interface ManualConfig {
@@ -219,6 +238,8 @@ export type NavSection =
   | 'square'
   | 'assets' 
   | 'marketing'
+  | 'marketing_ads'
+  | 'marketing_popup'
   | 'menus'
   | 'api' 
   | 'payment' 

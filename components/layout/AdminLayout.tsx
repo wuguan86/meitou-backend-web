@@ -23,17 +23,20 @@ interface AdminLayoutProps {
   // 其他页面组件通过 props 传入，避免循环依赖
   SquareManagement?: React.ComponentType;
   AssetsManagement?: React.ComponentType;
-  MarketingManagement?: React.ComponentType;
+  MarketingManagement?: React.ComponentType; // 广告管理
+  PopupManagement?: React.ComponentType; // 弹窗管理
   MenuManagement?: React.ComponentType;
   ApiManagement?: React.ComponentType;
   PaymentManagement?: React.ComponentType;
   RechargeConfigManagement?: React.ComponentType;
+  RechargeRecordsManagement?: React.ComponentType;
   GenerationRecords?: React.ComponentType;
   InvitationManagement?: React.ComponentType;
   SiteManagement?: React.ComponentType;
   AccountManagement?: React.ComponentType;
   ApiParameterMappingManagement?: React.ComponentType;
   MemberConfigManagement?: React.ComponentType;
+  PromptHelperManagement?: React.ComponentType;
 }
 
 const AdminLayout = ({ 
@@ -41,16 +44,19 @@ const AdminLayout = ({
   SquareManagement,
   AssetsManagement,
   MarketingManagement,
+  PopupManagement,
   MenuManagement,
   ApiManagement,
   PaymentManagement,
   RechargeConfigManagement,
+  RechargeRecordsManagement,
   GenerationRecords,
   InvitationManagement,
   SiteManagement,
   AccountManagement,
   ApiParameterMappingManagement,
-  MemberConfigManagement
+  MemberConfigManagement,
+  PromptHelperManagement
 }: AdminLayoutProps) => {
   const [activeTab, setActiveTab] = useState<NavSection>('dashboard'); // 当前激活的标签页
   const [sidebarOpen, setSidebarOpen] = useState(true); // 侧边栏是否展开（桌面端）
@@ -79,18 +85,24 @@ const AdminLayout = ({
         return SquareManagement ? <SquareManagement /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
       case 'assets': 
         return AssetsManagement ? <AssetsManagement /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
-      case 'marketing': 
+      case 'marketing_ads': 
         return MarketingManagement ? <MarketingManagement /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
+      case 'marketing_popup':
+        return PopupManagement ? <PopupManagement /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
       case 'menus': 
         return MenuManagement ? <MenuManagement /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
       case 'api': 
         return ApiManagement ? <ApiManagement /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
       case 'api_mapping':
         return ApiParameterMappingManagement ? <ApiParameterMappingManagement /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
+      case 'prompt_helper':
+        return PromptHelperManagement ? <PromptHelperManagement /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
       case 'payment': 
         return PaymentManagement ? <PaymentManagement /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
       case 'recharge_config': 
         return RechargeConfigManagement ? <RechargeConfigManagement /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
+      case 'recharge_records': 
+        return RechargeRecordsManagement ? <RechargeRecordsManagement /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
       case 'membership_package':
         return MemberConfigManagement ? <MemberConfigManagement /> : <div className="p-6 bg-white rounded-xl">页面开发中</div>;
       case 'gen_records': 

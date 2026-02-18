@@ -23,10 +23,14 @@ const getHeaders = (): HeadersInit => {
   return headers;
 };
 
+interface CustomRequestInit extends RequestInit {
+  responseType?: 'json' | 'blob';
+}
+
 // 统一请求处理
 const request = async <T>(
   url: string,
-  options: RequestInit = {}
+  options: CustomRequestInit = {}
 ): Promise<T> => {
   try {
     const response = await fetch(`${API_BASE_URL}${url}`, {
@@ -79,6 +83,10 @@ const request = async <T>(
       throw new Error(errorMessage);
     }
 
+    if (options.responseType === 'blob') {
+      return (await response.blob()) as any as T;
+    }
+
     const data = await response.json();
 
     // 如果响应格式是 Result<T>
@@ -110,8 +118,8 @@ const request = async <T>(
 };
 
 // GET 请求
-export const get = <T>(url: string): Promise<T> => {
-  return request<T>(url, { method: 'GET' });
+export const get = <T>(url: string, options?: CustomRequestInit): Promise<T> => {
+  return request<T>(url, { ...options, method: 'GET' });
 };
 
 // POST 请求
