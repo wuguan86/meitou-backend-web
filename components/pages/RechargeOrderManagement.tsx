@@ -17,6 +17,8 @@ const RechargeOrderManagement = () => {
   const [queryParams, setQueryParams] = useState({
     search: '',
     paymentType: '全部',
+    status: '全部',
+    productType: '全部',
     dateRange: [] as any[],
     page: 1,
     size: 10
@@ -29,6 +31,8 @@ const RechargeOrderManagement = () => {
         siteId: activeSiteId,
         search: queryParams.search,
         paymentType: queryParams.paymentType,
+        status: queryParams.status,
+        productType: queryParams.productType,
         page: queryParams.page,
         size: queryParams.size
       };
@@ -73,6 +77,8 @@ const RechargeOrderManagement = () => {
         siteId: activeSiteId,
         search: queryParams.search,
         paymentType: queryParams.paymentType,
+        status: queryParams.status,
+        productType: queryParams.productType,
         page: 1, // 导出不需要分页，或者后端忽略
         size: 10000 // 导出数量限制
       };
@@ -118,6 +124,16 @@ const RechargeOrderManagement = () => {
           <div className="text-gray-500 text-xs">{record.user?.phone || '-'}</div>
         </div>
       )
+    },
+    {
+      title: '充值类型',
+      dataIndex: 'productType',
+      key: 'productType',
+      render: (type: string) => {
+        if (type === 'points_recharge') return <Tag color="blue">算力充值</Tag>;
+        if (type === 'membership') return <Tag color="purple">会员购买</Tag>;
+        return type;
+      }
     },
     {
       title: '充值金额',
@@ -244,6 +260,40 @@ const RechargeOrderManagement = () => {
                         { value: 'alipay', label: 'Alipay' },
                         { value: 'wechat', label: 'Wechat' },
                         { value: 'system', label: 'System' },
+                    ]}
+                />
+            </div>
+
+            <div className="flex items-center">
+                <span className="mr-2 text-gray-500">支付状态:</span>
+                <Select 
+                    defaultValue="全部" 
+                    style={{ width: 120 }} 
+                    value={queryParams.status}
+                    onChange={val => setQueryParams({...queryParams, status: val})}
+                    options={[
+                        { value: '全部', label: '全部' },
+                        { value: 'pending', label: '待支付' },
+                        { value: 'paying', label: '支付中' },
+                        { value: 'paid', label: '已支付' },
+                        { value: 'cancelled', label: '已取消' },
+                        { value: 'refunded', label: '已退款' },
+                        { value: 'failed', label: '支付失败' },
+                    ]}
+                />
+            </div>
+
+            <div className="flex items-center">
+                <span className="mr-2 text-gray-500">充值类型:</span>
+                <Select 
+                    defaultValue="全部" 
+                    style={{ width: 120 }} 
+                    value={queryParams.productType}
+                    onChange={val => setQueryParams({...queryParams, productType: val})}
+                    options={[
+                        { value: '全部', label: '全部' },
+                        { value: 'points_recharge', label: '算力充值' },
+                        { value: 'membership', label: '会员购买' },
                     ]}
                 />
             </div>

@@ -185,13 +185,13 @@ const MembershipPackageManagement: React.FC = () => {
                       >
                         <Edit size={14} />
                       </button>
-                      <button 
+                      {/* <button 
                         onClick={() => handleDelete(pkg)}
                         className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-slate-200 hover:border-red-200"
                         title="删除套餐"
                       >
                         <Trash2 size={14} />
-                      </button>
+                      </button> */}
                     </div>
                   </div>
 

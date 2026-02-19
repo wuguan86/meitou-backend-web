@@ -1,4 +1,5 @@
 import api from './index';
+import { PageResult } from '../types';
 
 export interface RechargeOrder {
   id: number;
@@ -16,10 +17,17 @@ export interface RechargeOrder {
   };
 }
 
+export interface RechargeStats {
+  totalAmount: number;
+  totalOrders?: number;
+}
+
 export interface RechargeOrderQuery {
   siteId: number;
   search?: string;
   paymentType?: string;
+  status?: string;
+  productType?: string;
   startDate?: string;
   endDate?: string;
   page?: number;
@@ -34,7 +42,7 @@ export const getRechargeOrders = (params: RechargeOrderQuery) => {
     }
   });
   const queryString = searchParams.toString();
-  return api.get(`/admin/recharge-orders?${queryString}`);
+  return api.get<PageResult<RechargeOrder>>(`/admin/recharge-orders?${queryString}`);
 };
 
 export const getRechargeStats = (params: RechargeOrderQuery) => {
@@ -45,7 +53,7 @@ export const getRechargeStats = (params: RechargeOrderQuery) => {
     }
   });
   const queryString = searchParams.toString();
-  return api.get(`/admin/recharge-orders/stats?${queryString}`);
+  return api.get<RechargeStats>(`/admin/recharge-orders/stats?${queryString}`);
 };
 
 export const exportRechargeOrders = (params: RechargeOrderQuery) => {
