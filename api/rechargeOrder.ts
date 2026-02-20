@@ -11,6 +11,7 @@ export interface RechargeOrder {
   paymentType: string;
   status: string;
   createdAt: string;
+  productPayload?: string;
   user?: {
     username: string;
     phone: string;

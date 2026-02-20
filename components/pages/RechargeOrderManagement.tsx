@@ -129,9 +129,31 @@ const RechargeOrderManagement = () => {
       title: '充值类型',
       dataIndex: 'productType',
       key: 'productType',
-      render: (type: string) => {
+      render: (type: string, record: rechargeOrderAPI.RechargeOrder) => {
         if (type === 'points_recharge') return <Tag color="blue">算力充值</Tag>;
-        if (type === 'membership') return <Tag color="purple">会员购买</Tag>;
+        if (type === 'membership') {
+          let duration = '';
+          if (record.productPayload) {
+            try {
+              const payload = JSON.parse(record.productPayload);
+              const { billingCycle, quantity } = payload;
+              const q = quantity || 1;
+              if (billingCycle === 'MONTHLY') {
+                duration = `${q}个月`;
+              } else if (billingCycle === 'YEARLY') {
+                duration = `${q}年`;
+              }
+            } catch (e) {
+              console.error('解析会员信息失败', e);
+            }
+          }
+          return (
+            <div className="flex flex-col items-start gap-1">
+              <Tag color="purple">会员购买</Tag>
+              {duration && <span className="text-xs text-gray-500">{duration}</span>}
+            </div>
+          );
+        }
         return type;
       }
     },

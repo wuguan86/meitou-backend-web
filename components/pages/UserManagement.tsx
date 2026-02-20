@@ -145,21 +145,39 @@ const UserManagement = () => {
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50 border-b text-[11px] uppercase">
                   <tr>
-                    <th className="px-4 lg:px-6 py-3 lg:py-4">邮箱</th>
                     <th className="px-4 lg:px-6 py-3 lg:py-4">用户名</th>
                     <th className="px-4 lg:px-6 py-3 lg:py-4">手机</th>
+                    <th className="px-4 lg:px-6 py-3 lg:py-4">会员类型</th>
+                    <th className="px-4 lg:px-6 py-3 lg:py-4">会员到期时间</th>
                     <th className="px-4 lg:px-6 py-3 lg:py-4">余额</th>
                     <th className="px-4 lg:px-6 py-3 lg:py-4">状态</th>
                     <th className="px-4 lg:px-6 py-3 lg:py-4 text-right">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {users.map(u => (
+                  {users.map((u, index) => (
                     <tr key={u.id} className="hover:bg-slate-50">
-                      <td className="px-4 lg:px-6 py-3 lg:py-4 text-xs sm:text-sm">{u.email}</td>
                       <td className="px-4 lg:px-6 py-3 lg:py-4 text-xs sm:text-sm">{u.username}</td>
                       <td className="px-4 lg:px-6 py-3 lg:py-4 text-xs sm:text-sm">{u.phone || '-'}</td>
-                      <td className="px-4 lg:px-6 py-3 lg:py-4 font-bold text-xs sm:text-sm">{u.balance || 0}</td>
+                      <td className="px-4 lg:px-6 py-3 lg:py-4 text-xs sm:text-sm">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${!u.membershipName || u.membershipName.includes('免费') ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700'}`}>
+                          {u.membershipName || '免费用户'}
+                        </span>
+                      </td>
+                      <td className="px-4 lg:px-6 py-3 lg:py-4 text-xs sm:text-sm text-slate-500">
+                        {(!u.membershipExpireAt || (!u.membershipName || u.membershipName.includes('免费'))) ? '- -' : u.membershipExpireAt.substring(0, 10)}
+                      </td>
+                      <td className="px-4 lg:px-6 py-3 lg:py-4 font-bold text-xs sm:text-sm group relative cursor-help">
+                        <span className="border-b border-dashed border-slate-300">{u.balance || 0}</span>
+                        <div className={`absolute z-20 invisible group-hover:visible bg-slate-800 text-white text-xs rounded p-3 ${index < 2 ? 'top-full mt-2' : '-top-[6.5rem]'} left-1/2 -translate-x-1/2 w-40 shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none`}>
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between items-center"><span className="text-slate-400">会员余额:</span><span className="font-mono font-medium">{u.balanceMembership || 0}</span></div>
+                            <div className="flex justify-between items-center"><span className="text-slate-400">算力余额:</span><span className="font-mono font-medium">{u.balanceCompute || 0}</span></div>
+                            <div className="flex justify-between items-center"><span className="text-slate-400">系统赠送:</span><span className="font-mono font-medium">{u.balanceGift || 0}</span></div>
+                          </div>
+                          <div className={`absolute ${index < 2 ? '-top-1.5' : 'bottom-[-6px]'} left-1/2 -translate-x-1/2 w-3 h-3 bg-slate-800 rotate-45`}></div>
+                        </div>
+                      </td>
                       <td className="px-4 lg:px-6 py-3 lg:py-4">
                         <StatusBadge status={u.status || 'active'} />
                       </td>
@@ -204,10 +222,6 @@ const UserManagement = () => {
                 <div key={u.id} className="bg-slate-50 rounded-lg p-4 border border-slate-200">
                   <div className="space-y-2 mb-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-500">邮箱</span>
-                      <span className="text-sm font-medium text-slate-800 truncate flex-1 text-right ml-2">{u.email}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
                       <span className="text-xs text-slate-500">用户名</span>
                       <span className="text-sm font-medium text-slate-800">{u.username}</span>
                     </div>
@@ -216,8 +230,30 @@ const UserManagement = () => {
                       <span className="text-sm font-medium text-slate-800">{u.phone || '-'}</span>
                     </div>
                     <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500">会员类型</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${!u.membershipName || u.membershipName.includes('免费') ? 'bg-slate-100 text-slate-500' : 'bg-amber-100 text-amber-700'}`}>
+                        {u.membershipName || '免费用户'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500">会员到期</span>
+                      <span className="text-sm font-medium text-slate-500">
+                        {(!u.membershipExpireAt || (!u.membershipName || u.membershipName.includes('免费'))) ? '- -' : u.membershipExpireAt.substring(0, 10)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between group relative">
                       <span className="text-xs text-slate-500">余额</span>
-                      <span className="text-sm font-bold text-slate-800">{u.balance || 0}</span>
+                      <div className="flex flex-col items-end">
+                        <span className="text-sm font-bold text-slate-800 border-b border-dashed border-slate-300 cursor-help">{u.balance || 0}</span>
+                        {/* 移动端点击/按住显示明细，这里复用样式，但在移动端可能需要点击触发，暂时保持一致结构 */}
+                        <div className="absolute z-20 invisible group-active:visible group-hover:visible bg-slate-800 text-white text-xs rounded p-3 right-0 bottom-6 w-48 shadow-xl opacity-0 group-active:opacity-100 group-hover:opacity-100 transition-all duration-200 pointer-events-none">
+                           <div className="space-y-1.5">
+                            <div className="flex justify-between items-center"><span className="text-slate-400">会员余额:</span><span className="font-mono font-medium">{u.balanceMembership || 0}</span></div>
+                            <div className="flex justify-between items-center"><span className="text-slate-400">算力余额:</span><span className="font-mono font-medium">{u.balanceCompute || 0}</span></div>
+                            <div className="flex justify-between items-center"><span className="text-slate-400">系统赠送:</span><span className="font-mono font-medium">{u.balanceGift || 0}</span></div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-slate-500">状态</span>

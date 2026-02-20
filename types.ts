@@ -23,6 +23,11 @@ export interface User {
   status: 'active' | 'suspended';
   siteId: SiteId; // 站点ID：1=医美类, 2=电商类, 3=生活服务类
   createdAt: string;
+  membershipName?: string; // 会员等级名称
+  membershipExpireAt?: string; // 会员到期时间
+  balanceMembership?: number; // 会员余额
+  balanceCompute?: number; // 算力余额
+  balanceGift?: number; // 系统赠送余额
 }
 
 export interface Site {
